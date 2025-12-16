@@ -1,0 +1,43 @@
+<!--
+  Simple test file for local API endpoint testing during development.
+  Not part of the production application - see /front-end for the actual UI.
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Express Server</title>
+</head>
+
+<body>
+    <h1>Test Express Server</h1>
+    <button onclick="testServer()">Click to Test Server</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testServer() {
+            try {
+                const response = await fetch('http://localhost:3000/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        description: 'test',
+                        library: 'p5js'
+                    })
+                });
+
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+                console.log('Server response:', data);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

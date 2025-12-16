@@ -1,0 +1,3576 @@
+<!--
+  games.random - Game Play & Editor Interface
+  
+  Interactive code editor with live game preview, AI assistance, and educational features.
+  Features Monaco editor, real-time code execution, and integrated documentation.
+  
+  @author Shayan Mazahir, Mohammad Samin
+  @license GPL-3.0-or-later
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playing Game - games.random</title>
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+
+    <!-- Game Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
+
+    <!-- Flow Chart Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+    <style>
+        /**
+             * games.random - Play Interface Styles
+             * 
+             * Complete stylesheet for the code editor and game preview interface.
+             * Includes: layout, components, animations, AI chat, documentation panel
+             * 
+             * @author Shayan Mazahir, Mohammad Samin, Rayyan Moosani
+             * @license GPL-3.0-or-later
+             * 
+             * TODO: Future refactoring - split into:
+             * - css/play-layout.css (grid, panels, responsive)
+             * - css/play-components.css (buttons, modals, cards)
+             * - css/play-animations.css (keyframes, transitions)
+             */
+    
+        /* ========================================
+               BASE STYLES & RESET
+               ======================================== */
+    
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+    
+        /* ========================================
+               HEADER & NAVIGATION
+               ======================================== */
+    
+        .header {
+            background: rgba(20, 20, 20, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    
+        .logo {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #ffffff;
+        }
+    
+        .logo-highlight {
+            color: #00ff88;
+        }
+    
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+    
+        .library-badge {
+            padding: 6px 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            color: #00ff88;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+    
+        /* ========================================
+               BUTTONS - Base & Variants
+               ======================================== */
+    
+        .btn {
+            padding: 8px 16px;
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-weight: 500;
+        }
+    
+        .btn:hover {
+            background: rgba(50, 50, 50, 0.9);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+    
+        .btn-primary {
+            background: #00ff88;
+            color: #0a0a0a;
+            border-color: #00ff88;
+            font-weight: 600;
+        }
+    
+        .btn-primary:hover {
+            background: #00dd77;
+        }
+    
+        .btn-icon {
+            padding: 8px 12px !important;
+            font-size: 1.1em;
+        }
+    
+        /* ========================================
+               SPLIT LAYOUT - Code Editor + Game Preview
+               ======================================== */
+    
+        .split-container {
+            display: flex;
+            height: calc(100vh - 61px);
+        }
+    
+        /* Code Editor Panel (Left Side) */
+        .code-panel {
+            width: 50%;
+            background: rgba(15, 15, 15, 0.95);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    
+        /* Code Panel Header with Controls */
+        .code-header {
+            padding: 18px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+    
+        .code-title-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+    
+        .code-title-text {
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #a0a0a0;
+        }
+    
+        /* Live indicator pulse animation */
+        .live-indicator {
+            color: #00ff88;
+            font-size: 0.5em;
+            animation: livePulse 2s ease-in-out infinite;
+            margin-left: -8px;
+        }
+    
+        @keyframes livePulse {
+    
+            0%,
+            100% {
+                opacity: 1;
+            }
+    
+            50% {
+                opacity: 0.3;
+            }
+        }
+    
+        /* ========================================
+               FILTER CONTROLS - Event Highlighting
+               ======================================== */
+    
+        .filter-compact {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(0, 255, 136, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.25);
+            border-radius: 6px;
+            transition: all 0.25s ease;
+        }
+    
+        .filter-compact:hover {
+            background: rgba(0, 255, 136, 0.12);
+            border-color: rgba(0, 255, 136, 0.35);
+        }
+    
+        .filter-label {
+            font-size: 0.7em;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+        }
+    
+        .filter-select {
+            background: transparent;
+            border: none;
+            color: #00ff88;
+            font-size: 0.8em;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            padding: 0;
+            font-family: inherit;
+        }
+    
+        .filter-select option {
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 8px;
+        }
+    
+        /* ========================================
+               CODE EDITOR CONTROLS
+               ======================================== */
+    
+        .code-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+    
+        .action-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.08);
+            margin: 0 4px;
+        }
+    
+        .btn-group {
+            display: flex;
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            padding: 2px;
+        }
+    
+        .btn-theme {
+            font-size: 0.85em;
+            padding: 7px 12px;
+        }
+    
+        /* Monaco Editor Container */
+        #editorContainer {
+            flex: 1;
+            overflow: hidden;
+        }
+    
+        /* ========================================
+               GAME PREVIEW PANEL (Right Side)
+               ======================================== */
+    
+        .game-panel {
+            width: 50%;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    
+        .game-panel.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+        }
+    
+        .game-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    
+        .game-title {
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #808080;
+        }
+    
+        .game-actions {
+            display: flex;
+            gap: 10px;
+        }
+    
+        /* Game Canvas Container */
+        .game-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            position: relative;
+            overflow: auto;
+            background: #0a0a0a;
+        }
+    
+        /* Style the game canvas */
+        .game-container canvas {
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+            display: block !important;
+            max-width: 100% !important;
+            height: auto !important;
+        }
+    
+        /* ========================================
+               LOADING & ERROR STATES
+               ======================================== */
+    
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            color: #808080;
+        }
+    
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+    
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    
+        .error {
+            padding: 20px;
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            border-radius: 8px;
+            color: #fca5a5;
+            max-width: 500px;
+            text-align: center;
+        }
+    
+        /* ========================================
+               CUSTOM SCROLLBAR
+               ======================================== */
+    
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+    
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 30, 30, 0.4);
+        }
+    
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 100, 100, 0.4);
+            border-radius: 5px;
+        }
+    
+        /* ========================================
+               MODAL - Base Styles
+               ======================================== */
+    
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    
+        .modal-content {
+            background: rgba(20, 20, 20, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+    
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    
+        .modal-header h2 {
+            font-size: 1.3em;
+            margin: 0;
+        }
+    
+        .modal-body {
+            padding: 30px;
+        }
+    
+        .modal-body a {
+            text-decoration: none;
+            font-weight: 600;
+            color: #00ff88;
+        }
+    
+        .modal-body a:hover {
+            text-decoration: underline;
+        }
+    
+        /* ========================================
+               CODE HIGHLIGHTING - Live Function Tracking
+               ======================================== */
+    
+        /* Main highlight effect for executed functions */
+        .highlighted-line {
+            background: linear-gradient(90deg, rgba(0, 255, 136, 0.18) 0%, rgba(0, 255, 136, 0.08) 100%) !important;
+            border-left: 4px solid #00ff88 !important;
+            box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.1), 0 0 10px rgba(0, 255, 136, 0.2) !important;
+            animation: gorgeousPulse 2s ease-in-out;
+            position: relative;
+        }
+    
+        /* Animated border glow */
+        .highlighted-line::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, #00ff88, #00dd77, #00ff88);
+            box-shadow: 0 0 10px #00ff88, 0 0 20px rgba(0, 255, 136, 0.5);
+            animation: borderGlow 1.5s ease-in-out infinite;
+        }
+    
+        @keyframes gorgeousPulse {
+            0% {
+                background: linear-gradient(90deg, rgba(0, 255, 136, 0.3) 0%, rgba(0, 255, 136, 0.15) 100%);
+                box-shadow: inset 0 0 30px rgba(0, 255, 136, 0.2), 0 0 15px rgba(0, 255, 136, 0.3);
+            }
+    
+            50% {
+                background: linear-gradient(90deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 255, 136, 0.1) 100%);
+                box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.15), 0 0 10px rgba(0, 255, 136, 0.2);
+            }
+    
+            100% {
+                background: linear-gradient(90deg, rgba(0, 255, 136, 0.18) 0%, rgba(0, 255, 136, 0.08) 100%);
+                box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.1), 0 0 10px rgba(0, 255, 136, 0.2);
+            }
+        }
+    
+        @keyframes borderGlow {
+    
+            0%,
+            100% {
+                box-shadow: 0 0 10px #00ff88, 0 0 20px rgba(0, 255, 136, 0.5);
+                opacity: 1;
+            }
+    
+            50% {
+                box-shadow: 0 0 20px #00ff88, 0 0 30px rgba(0, 255, 136, 0.7);
+                opacity: 0.8;
+            }
+        }
+    
+        /* Line number glyph highlight */
+        .highlighted-glyph {
+            background: linear-gradient(180deg, #00ff88, #00dd77) !important;
+            width: 8px !important;
+            height: 16px !important;
+            border-radius: 3px;
+            box-shadow: 0 0 8px rgba(0, 255, 136, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            animation: glyphPulse 1.5s ease-in-out infinite;
+        }
+    
+        @keyframes glyphPulse {
+    
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+    
+            50% {
+                transform: scale(1.1);
+                opacity: 0.9;
+            }
+        }
+    
+        /* ========================================
+               NOTIFICATIONS - Function Execution Alerts
+               ======================================== */
+    
+        /* Compact notification in bottom right */
+        .function-notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 255, 136, 0.04));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 136, 0.25);
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 12px rgba(0, 255, 136, 0.15);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 200px;
+        }
+    
+        .function-notification.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    
+        .notification-icon {
+            font-size: 18px;
+            line-height: 1;
+            animation: iconPulse 0.5s ease-in-out;
+        }
+    
+        @keyframes iconPulse {
+    
+            0%,
+            100% {
+                transform: scale(1);
+            }
+    
+            50% {
+                transform: scale(1.15);
+            }
+        }
+    
+        .notification-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+    
+        .notification-title {
+            font-weight: 600;
+            color: #00ff88;
+            font-size: 0.85em;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    
+        .notification-line {
+            font-size: 0.75em;
+            color: rgba(255, 255, 255, 0.5);
+        }
+    
+        /* ========================================
+               FILTER TOAST - Highlight Mode Indicator
+               ======================================== */
+    
+        .filter-toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 255, 136, 0.08));
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: #00ff88;
+            font-weight: 600;
+            font-size: 0.9em;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 255, 136, 0.3);
+            z-index: 10000;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+    
+        .filter-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    
+        /* ========================================
+               AI CHAT - Floating Bubble & Overlay
+               ======================================== */
+    
+        /* Typing indicator animation */
+        .typing-dots {
+            display: inline-block;
+            animation: typingBounce 1.4s ease-in-out infinite;
+        }
+    
+        @keyframes typingBounce {
+    
+            0%,
+            60%,
+            100% {
+                opacity: 1;
+            }
+    
+            30% {
+                opacity: 0.4;
+            }
+        }
+    
+        /* Floating AI chat bubble */
+        .ai-bubble {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #00ff88, #00dd77);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4), 0 0 0 0 rgba(0, 255, 136, 0.4);
+            transition: all 0.3s ease;
+            z-index: 9998;
+            animation: bubblePulse 2s ease-in-out infinite;
+        }
+    
+        .ai-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 32px rgba(0, 255, 136, 0.6), 0 0 0 8px rgba(0, 255, 136, 0.1);
+        }
+    
+        .ai-bubble-icon {
+            font-size: 28px;
+            animation: bubbleFloat 3s ease-in-out infinite;
+        }
+    
+        @keyframes bubblePulse {
+    
+            0%,
+            100% {
+                box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4), 0 0 0 0 rgba(0, 255, 136, 0.4);
+            }
+    
+            50% {
+                box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4), 0 0 0 12px rgba(0, 255, 136, 0.1);
+            }
+        }
+    
+        @keyframes bubbleFloat {
+    
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+    
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+    
+        /* ========================================
+               AI CHAT OVERLAY - Full Modal Interface
+               ======================================== */
+    
+        .ai-chat-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+    
+        .ai-chat-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    
+        /* AI Chat Container */
+        .ai-chat-container {
+            width: 100%;
+            max-width: 900px;
+            height: 85vh;
+            max-height: 700px;
+            background: linear-gradient(135deg, rgba(20, 25, 30, 0.98) 0%, rgba(15, 20, 25, 0.98) 100%);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 80px rgba(0, 255, 136, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    
+        .ai-chat-overlay.show .ai-chat-container {
+            transform: scale(1);
+        }
+    
+        /* ========================================
+               AI CHAT - Header
+               ======================================== */
+    
+        .ai-chat-header {
+            padding: 24px 28px;
+            background: rgba(0, 255, 136, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    
+        .ai-chat-title {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+    
+        .ai-chat-title-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+        }
+    
+        .ai-chat-title-text h2 {
+            font-size: 1.15em;
+            margin: 0;
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+    
+        .ai-chat-title-text p {
+            font-size: 0.85em;
+            color: #9ca3af;
+            margin: 2px 0 0 0;
+        }
+    
+        .ai-chat-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.2em;
+            color: #9ca3af;
+        }
+    
+        .ai-chat-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+    
+        /* ========================================
+               AI CHAT - Messages Area
+               ======================================== */
+    
+        .ai-chat-messages {
+            flex: 1;
+            padding: 28px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+    
+        /* Custom scrollbar for chat */
+        .ai-chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+    
+        .ai-chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+        }
+    
+        .ai-chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 136, 0.3);
+            border-radius: 4px;
+        }
+    
+        .ai-chat-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 136, 0.5);
+        }
+    
+        /* AI message bubbles (left side with avatar) */
+        .ai-message {
+            display: flex;
+            gap: 12px;
+            animation: slideInLeft 0.3s ease-out;
+        }
+    
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+    
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+    
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    
+        .ai-message-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.25);
+            flex-shrink: 0;
+        }
+    
+        .ai-message-content {
+            flex: 1;
+            background: rgba(30, 35, 40, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            border-top-left-radius: 4px;
+            padding: 16px 20px;
+            color: #e5e7eb;
+            font-size: 0.95em;
+            line-height: 1.7;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+    
+        /* ========================================
+               AI CHAT - Content Formatting
+               ======================================== */
+    
+        /* Text formatting inside AI messages */
+        .ai-message-content p {
+            margin: 0 0 14px 0;
+        }
+    
+        .ai-message-content p:last-child {
+            margin-bottom: 0;
+        }
+    
+        .ai-message-content p:first-child {
+            margin-top: 0;
+        }
+    
+        .ai-message-content ul,
+        .ai-message-content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+    
+        .ai-message-content li {
+            margin: 6px 0;
+            line-height: 1.6;
+        }
+    
+        .ai-message-content strong {
+            color: #00ff88;
+            font-weight: 600;
+        }
+    
+        /* Inline code styling (different from code blocks) */
+        .ai-message-content p code,
+        .ai-message-content li code {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: #00ff88;
+        }
+    
+        /* ========================================
+               AI CHAT - Code Blocks
+               ======================================== */
+    
+        /* Code blocks with syntax highlighting */
+        .ai-message-content pre {
+            margin: 14px 0;
+            background: #0d1117;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+    
+        .code-block-wrapper {
+            position: relative;
+        }
+    
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    
+        .code-block-language {
+            font-size: 0.75em;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+    
+        .code-block-copy {
+            padding: 5px 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
+            color: #00ff88;
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    
+        .code-block-copy:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: translateY(-1px);
+        }
+    
+        .code-block-copy:active {
+            transform: translateY(0);
+        }
+    
+        .ai-message-content pre code {
+            display: block;
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            overflow-x: auto;
+            background: transparent;
+            border: none;
+        }
+    
+        /* Override highlight.js styles */
+        .ai-message-content pre code.hljs {
+            background: transparent;
+            padding: 16px;
+        }
+    
+        /* ========================================
+               AI CHAT - Welcome Screen
+               ======================================== */
+    
+        .ai-welcome-message {
+            text-align: center;
+            padding: 50px 30px;
+            color: #6b7280;
+        }
+    
+        .ai-welcome-message h3 {
+            font-size: 1.4em;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+    
+        .ai-welcome-message p {
+            font-size: 1em;
+            line-height: 1.6;
+            max-width: 500px;
+            margin: 0 auto 24px;
+            color: #9ca3af;
+        }
+    
+        .ai-welcome-icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            animation: welcomeFloat 2s ease-in-out infinite;
+        }
+    
+        @keyframes welcomeFloat {
+    
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+    
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+    
+        /* Quick suggestion chips */
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    
+        .suggestion-chip {
+            padding: 10px 18px;
+            background: rgba(0, 255, 136, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 20px;
+            color: #00ff88;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    
+        .suggestion-chip:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: rgba(0, 255, 136, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2);
+        }
+    
+        .suggestion-chip:active {
+            transform: translateY(0);
+        }
+    
+        /* ========================================
+               AI CHAT - Input Area
+               ======================================== */
+    
+        .ai-chat-input-area {
+            padding: 20px 24px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    
+        .ai-chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+    
+        .ai-chat-input {
+            flex: 1;
+            min-height: 48px;
+            max-height: 150px;
+            padding: 14px 18px;
+            background: rgba(30, 35, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            color: #e5e7eb;
+            font-size: 0.95em;
+            font-family: inherit;
+            resize: none;
+            transition: all 0.2s ease;
+            line-height: 1.5;
+        }
+    
+        .ai-chat-input:focus {
+            outline: none;
+            border-color: #00ff88;
+            background: rgba(30, 35, 40, 0.95);
+            box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+        }
+    
+        .ai-chat-input::placeholder {
+            color: #6b7280;
+        }
+    
+        .ai-chat-send {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00ff88, #00dd77);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.3em;
+            color: #0a0a0a;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+        }
+    
+        .ai-chat-send:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 255, 136, 0.4);
+        }
+    
+        .ai-chat-send:active:not(:disabled) {
+            transform: translateY(0);
+        }
+    
+        .ai-chat-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    
+        /* ========================================
+               DOCUMENTATION PANEL - Educational Features
+               ======================================== */
+    
+        /* Interactive tooltips for code explanations */
+        .code-tooltip {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 255, 136, 0.08));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            max-width: 300px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            font-size: 0.9em;
+            line-height: 1.5;
+            animation: tooltipFadeIn 0.2s ease-out;
+        }
+    
+        @keyframes tooltipFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+    
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    
+        .tooltip-icon {
+            color: #00ff88;
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+    
+        .tooltip-title {
+            font-weight: 600;
+            color: #00ff88;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+    
+        .tooltip-content {
+            color: #e0e0e0;
+        }
+    
+        .tooltip-pattern {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+        }
+    
+        /* Documentation side panel */
+        .doc-panel {
+            position: fixed;
+            right: 30px;
+            top: 100px;
+            width: 350px;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            z-index: 999;
+            max-height: 70vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+    
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    
+        .doc-title {
+            font-weight: 600;
+            color: #00ff88;
+            font-size: 1.1em;
+        }
+    
+        .doc-close {
+            background: none;
+            border: none;
+            color: #808080;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 4px;
+        }
+    
+        .doc-section {
+            margin-bottom: 20px;
+        }
+    
+        .doc-section-title {
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+    
+        .doc-function {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+    
+        .doc-function:hover {
+            background: rgba(0, 255, 136, 0.1);
+        }
+    
+        .doc-function-name {
+            font-family: 'JetBrains Mono', monospace;
+            color: #00ff88;
+            font-size: 0.9em;
+        }
+    
+        .doc-function-desc {
+            color: #a0a0a0;
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+    
+        /* ========================================
+               FLOW VISUALIZATION - Code Flow Chart
+               ======================================== */
+    
+        .flow-panel {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            z-index: 999;
+            max-width: 80%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+    
+        .flow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+    
+        .flow-title {
+            font-weight: 600;
+            color: #00ff88;
+            font-size: 0.9em;
+        }
+    
+        .flow-steps {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+    
+        .flow-step {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            font-size: 0.8em;
+            color: #a0a0a0;
+            transition: all 0.3s ease;
+        }
+    
+        .flow-step.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+    
+        .flow-arrow {
+            color: #808080;
+            font-size: 0.8em;
+        }
+    
+        /* Mermaid flowchart container */
+        .mermaid-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            max-height: 200px;
+            overflow: auto;
+        }
+    
+        /* ========================================
+               FEATURE TOGGLE BUTTONS
+               ======================================== */
+    
+        .feature-toggle {
+            position: fixed;
+            right: 30px;
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #e0e0e0;
+            cursor: pointer;
+            z-index: 998;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+        }
+    
+        .feature-toggle:hover {
+            background: rgba(30, 30, 30, 0.9);
+        }
+    
+        .toggle-docs {
+            top: 160px;
+        }
+    
+        .toggle-flow {
+            top: 210px;
+        }
+    
+        /* ========================================
+               DOWNLOAD MENU
+               ======================================== */
+    
+        .download-option {
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            font-family: inherit;
+            font-size: 0.9em;
+        }
+    
+        .download-option:hover {
+            background: rgba(0, 255, 136, 0.1);
+        }
+    
+        .download-option span {
+            font-size: 1.2em;
+        }
+    
+        </style>
+    </head>
+
+    <body>
+        <!-- ==========================================
+                 HEADER - Top Navigation Bar
+                 ========================================== -->
+    
+        <div class="header">
+            <!-- Logo with brand highlight -->
+            <div class="logo">
+                games<span class="logo-highlight">.random</span>
+            </div>
+    
+            <!-- Header actions: library indicator and navigation -->
+            <div class="header-actions">
+                <!-- Dynamic library badge (updated by JavaScript) -->
+                <span class="library-badge" id="libraryBadge">P5.JS</span>
+    
+                <!-- Return to main page -->
+                <button class="btn" onclick="window.location.href='index.html'">← New Game</button>
+            </div>
+        </div>
+    
+        <!-- ==========================================
+                 SPLIT VIEW LAYOUT
+                 Left: Code Editor | Right: Game Preview
+                 ========================================== -->
+    
+        <div class="split-container">
+    
+            <!-- ==========================================
+                     LEFT PANEL - Monaco Code Editor
+                     ========================================== -->
+    
+            <div class="code-panel">
+                <!-- Editor Controls Header -->
+                <div class="code-header">
+                    <!-- Title and event filter -->
+                    <div class="code-title-group">
+                        <span class="code-title-text">Live Editor</span>
+    
+                        <!-- Live indicator (pulsing dot) -->
+                        <span class="live-indicator">●</span>
+    
+                        <!-- Event highlighting filter dropdown -->
+                        <div class="filter-compact">
+                            <label class="filter-label">Focus:</label>
+                            <select class="filter-select" id="highlightFilter" onchange="updateHighlightFilter(this.value)">
+                                <option value="all">All Events</option>
+                                <option value="input">Input</option>
+                                <option value="collision">Collisions</option>
+                                <option value="scoring">Scoring</option>
+                                <option value="gamestate">Game State</option>
+                                <option value="setup">Setup</option>
+                                <option value="none">Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+    
+                    <!-- Editor action buttons -->
+                    <div class="code-actions">
+                        <!-- Theme selector -->
+                        <select class="btn btn-theme" id="themeSelector" onchange="changeTheme(this.value)">
+                            <option value="vs-dark">Dark</option>
+                            <option value="vs">Light</option>
+                            <option value="hc-black">HC Dark</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+    
+                        <div class="action-divider"></div>
+    
+                        <!-- Primary action: Run edited code -->
+                        <button class="btn btn-primary" onclick="runEditedCode()">▶ Run</button>
+    
+                        <!-- Utility buttons group -->
+                        <div class="btn-group">
+                            <!-- Reset to original code -->
+                            <button class="btn btn-icon" onclick="resetCode()" title="Reset Code">↺</button>
+    
+                            <!-- Copy code to clipboard -->
+                            <button class="btn btn-icon" onclick="copyCode()" title="Copy Code">📋</button>
+    
+                            <!-- Download dropdown menu -->
+                            <div style="position: relative; display: inline-block;">
+                                <button class="btn btn-icon" onclick="toggleDownloadMenu(event)" title="Download"
+                                    id="downloadBtn">
+                                    💾 <span style="font-size: 0.7em;">▼</span>
+                                </button>
+    
+                                <!-- Download options dropdown (hidden by default) -->
+                                <div id="downloadMenu" style="
+                                        display: none;
+                                        position: absolute;
+                                        top: 100%;
+                                        right: 0;
+                                        margin-top: 5px;
+                                        background: rgba(30, 30, 30, 0.98);
+                                        border: 1px solid rgba(255, 255, 255, 0.15);
+                                        border-radius: 8px;
+                                        padding: 8px 0;
+                                        min-width: 200px;
+                                        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+                                        z-index: 1000;
+                                    ">
+                                    <!-- Download as JavaScript file -->
+                                    <button class="download-option" onclick="downloadCode()">
+                                        <span style="margin-right: 8px;">📄</span>
+                                        <div>
+                                            <div style="font-weight: 600;">Download JS File</div>
+                                            <div style="font-size: 0.8em; color: #808080;">Just the code</div>
+                                        </div>
+                                    </button>
+    
+                                    <!-- Download as standalone HTML -->
+                                    <button class="download-option" onclick="downloadStandaloneHTML()">
+                                        <span style="margin-right: 8px;">🌐</span>
+                                        <div>
+                                            <div style="font-weight: 600;">Standalone HTML</div>
+                                            <div style="font-size: 0.8em; color: #808080;">Ready to share</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Monaco Editor Container (populated by JavaScript) -->
+                <div id="editorContainer"></div>
+            </div>
+    
+            <!-- ==========================================
+                     RIGHT PANEL - Game Preview
+                     ========================================== -->
+    
+            <div class="game-panel" id="gamePanel">
+                <!-- Game panel header -->
+                <div class="game-header">
+                    <div class="game-title">Live Game</div>
+    
+                    <!-- Game control actions -->
+                    <div class="game-actions">
+                        <!-- Toggle fullscreen mode -->
+                        <button class="btn" onclick="toggleFullscreen()">Fullscreen</button>
+                    </div>
+                </div>
+    
+                <!-- Game canvas container (p5.js or Phaser renders here) -->
+                <div class="game-container" id="gameContainer">
+                    <!-- Initial loading state (replaced when game loads) -->
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Initializing editor...</div>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+<!-- ==========================================
+         FEATURE TOGGLE BUTTONS - Educational Tools
+         Floating buttons on right side of screen
+         ========================================== -->
+
+<!-- Documentation panel toggle -->
+<div class="feature-toggle toggle-docs" onclick="toggleDocumentation()">
+    <span>📚</span>
+    <span>Documentation</span>
+</div>
+
+<!-- Flow visualization toggle -->
+<div class="feature-toggle toggle-flow" onclick="toggleFlowVisualization()">
+    <span>🔍</span>
+    <span>Code Flow</span>
+</div>
+
+<!-- ==========================================
+         DOCUMENTATION PANEL - Code Analysis & Learning
+         Shows game structure, functions, and dependencies
+         Hidden by default (display: none)
+         ========================================== -->
+
+<div class="doc-panel" id="docPanel" style="display: none;">
+    <!-- Panel Header -->
+    <div class="doc-header">
+        <div class="doc-title">📚 Game Architecture</div>
+        <button class="doc-close" onclick="toggleDocumentation()">✕</button>
+    </div>
+
+    <!-- Section 1: High-level summary of what the game does -->
+    <div class="doc-section">
+        <div class="doc-section-title">What's Happening?</div>
+        <div id="gameSummary">Analyzing code structure...</div>
+    </div>
+
+    <!-- Section 2: List of functions in the game -->
+    <div class="doc-section">
+        <div class="doc-section-title">Functions</div>
+        <!-- Populated dynamically by JavaScript -->
+        <div id="functionList"></div>
+    </div>
+
+    <!-- Section 3: Dependency graph visualization -->
+    <div class="doc-section">
+        <div class="doc-section-title">Dependencies</div>
+        <div class="mermaid-container">
+            <!-- Mermaid.js renders dependency graph here -->
+            <div id="dependencyGraph">Loading graph...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+         FLOW VISUALIZATION PANEL - Execution Flow
+         Shows step-by-step code execution with flowchart
+         Hidden by default (display: none)
+         ========================================== -->
+
+<div class="flow-panel" id="flowPanel" style="display: none;">
+    <!-- Panel Header -->
+    <div class="flow-header">
+        <div class="flow-title">🔍 Execution Flow</div>
+        <button class="doc-close" onclick="toggleFlowVisualization()">✕</button>
+    </div>
+
+    <!-- Step-by-step flow indicators (populated by JavaScript) -->
+    <div class="flow-steps" id="flowSteps">
+        <!-- Flow steps will be populated by JavaScript -->
+    </div>
+
+    <!-- Mermaid flowchart visualization -->
+    <div class="mermaid-container">
+        <!-- Mermaid.js renders flowchart here -->
+        <div id="flowChart">Loading flowchart...</div>
+    </div>
+</div>
+
+<!-- ==========================================
+         AI CHAT BUBBLE - Floating Assistant Button
+         Bottom-right floating button to open AI chat
+         ========================================== -->
+
+<div class="ai-bubble" onclick="openAIChat()" id="aiBubble">
+    <div class="ai-bubble-icon">✨</div>
+</div>
+
+<!-- ==========================================
+         AI CHAT OVERLAY - Full-Screen Chat Interface
+         Modal overlay for AI code assistant
+         Hidden by default (visibility: hidden in CSS)
+         ========================================== -->
+
+<div class="ai-chat-overlay" id="aiChatOverlay" onclick="closeAIChatOnOverlay(event)">
+    <!-- Chat Container (prevents click-through to overlay) -->
+    <div class="ai-chat-container" onclick="event.stopPropagation()">
+
+        <!-- Chat Header -->
+        <div class="ai-chat-header">
+            <div class="ai-chat-title">
+                <!-- AI Avatar Icon -->
+                <div class="ai-chat-title-icon">🤖</div>
+
+                <!-- Title and Subtitle -->
+                <div class="ai-chat-title-text">
+                    <h2>AI Assistant</h2>
+                    <p>Ask me to modify your game</p>
+                </div>
+            </div>
+
+            <!-- Close Button -->
+            <div class="ai-chat-close" onclick="closeAIChat()">✕</div>
+        </div>
+
+        <!-- Messages Area (scrollable) -->
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <!-- Welcome Message (shown initially) -->
+            <div class="ai-welcome-message">
+                <div class="ai-welcome-icon">🤖</div>
+                <h3>👋 Hey! I'm your code assistant</h3>
+                <p>I can help you modify your game, add features, fix bugs, or explain how the code works!</p>
+
+                <!-- Quick suggestion chips for common requests -->
+                <div class="suggestion-chips">
+                    <!-- Add Enemies -->
+                    <div class="suggestion-chip" onclick="sendQuickMessage('Add more enemies')">
+                        <span>⚔️</span>
+                        <span>Add enemies</span>
+                    </div>
+
+                    <!-- Make Harder -->
+                    <div class="suggestion-chip" onclick="sendQuickMessage('Make it harder')">
+                        <span>🔥</span>
+                        <span>Make it harder</span>
+                    </div>
+
+                    <!-- Change Colors -->
+                    <div class="suggestion-chip" onclick="sendQuickMessage('Change the colors')">
+                        <span>🎨</span>
+                        <span>Change colors</span>
+                    </div>
+
+                    <!-- Add Score System -->
+                    <div class="suggestion-chip" onclick="sendQuickMessage('Add a score system')">
+                        <span>🏆</span>
+                        <span>Add score</span>
+                    </div>
+
+                    <!-- Explain Code -->
+                    <div class="suggestion-chip" onclick="sendQuickMessage('Explain the code')">
+                        <span>📚</span>
+                        <span>Explain code</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Chat messages will be appended here dynamically -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="ai-chat-input-area">
+            <div class="ai-chat-input-wrapper">
+                <!-- Text Input (auto-expanding textarea) -->
+                <textarea class="ai-chat-input" id="aiChatInput"
+                    placeholder="E.g., 'Add more enemies' or 'Make it harder'..." rows="1"
+                    onkeypress="handleAIChatKeypress(event)" onkeydown="stopGameControls(event)"
+                    onkeyup="stopGameControls(event)">
+                    </textarea>
+
+                <!-- Send Button -->
+                <button class="ai-chat-send" onclick="sendAIMessage()">
+                    <span>➤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+         CUSTOM THEME MODAL - Monaco Editor Theme Import
+         Allows users to import custom Monaco themes
+         Hidden by default (display: none)
+         ========================================== -->
+
+<div id="themeModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <h2>🎨 Import Custom Theme</h2>
+            <button class="btn" onclick="closeThemeModal()">✕</button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+            <!-- Instructions with links to theme resources -->
+            <p style="margin-bottom: 15px; color: #808080;">
+                Get themes from
+                <a href="https://github.com/brijeshb42/monaco-themes/tree/master/themes" target="_blank">Monaco
+                    Themes</a>
+                or
+                <a href="https://editor.bitwiser.in/" target="_blank">Theme Builder</a>
+            </p>
+
+            <!-- Theme Name Input -->
+            <p style="margin-bottom: 10px; color: #e0e0e0; font-size: 0.9em;">Theme Name:</p>
+            <input type="text" id="customThemeName" placeholder="e.g., Dracula"
+                style="width: 100%; padding: 10px; background: rgba(30, 30, 30, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #e0e0e0; font-family: inherit; margin-bottom: 15px;">
+
+            <!-- Theme JSON Input -->
+            <p style="margin-bottom: 10px; color: #e0e0e0; font-size: 0.9em;">Paste Theme JSON:</p>
+            <textarea id="customThemeJson"
+                placeholder='{"base": "vs-dark", "inherit": true, "rules": [...], "colors": {...}}'
+                style="width: 100%; height: 300px; padding: 15px; background: rgba(30, 30, 30, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #e0e0e0; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; resize: vertical;">
+                </textarea>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-primary" onclick="applyCustomTheme()">Apply Theme</button>
+                <button class="btn" onclick="closeThemeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monaco Editor Loader -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+<script>
+    /**
+     * games.random - Play Interface JavaScript
+     * 
+     * Main script for code editor, game execution, and interactive features.
+     * Handles Monaco editor initialization, live code highlighting, AI chat,
+     * and educational documentation features.
+     * 
+     * @author Shayan Mazahir, Mohammad Samin, Rayyan Moosani
+     * @license GPL-3.0-or-later
+     */
+
+    // ==========================================
+    // GLOBAL STATE - Core Variables
+    // ==========================================
+
+    let gameCode = '';           // Current game code in editor
+    let library = '';            // Game library (p5js or phaser)
+    let originalCode = '';       // Original unmodified code (for reset)
+    let editor = null;           // Monaco editor instance
+    let currentHighlight = null; // Currently highlighted line decoration
+    let functionLineMap = {};    // Maps function names to line numbers
+    let highlightCooldowns = {}; // Prevents rapid re-highlighting
+    let highlightedOnce = new Set(); // Tracks which functions have been centered
+    let currentFilter = 'all';   // Active highlight filter mode
+
+    // ==========================================
+    // EDUCATIONAL TOOLTIPS - Pattern Library
+    // ==========================================
+
+    /**
+     * Tooltip data for common game programming patterns
+     * Provides context-aware explanations when functions execute
+     */
+    const tooltipData = {
+        'setup': {
+            title: '🎯 Game Setup',
+            content: 'This function runs once when the game starts. Perfect for initializing variables, creating objects, and setting up the game environment.',
+            pattern: 'Game initialization pattern'
+        },
+        'draw': {
+            title: '🔄 Game Loop',
+            content: 'This function runs continuously, typically 60 times per second. Use it to update game state and redraw the screen.',
+            pattern: 'Main game loop pattern'
+        },
+        'update': {
+            title: '⚙️ State Update',
+            content: 'Updates game logic, physics, and object states. Called every frame before rendering.',
+            pattern: 'State management pattern'
+        },
+        'keyPressed': {
+            title: '⌨️ Input Handling',
+            content: 'Handles keyboard input. This pattern separates input logic from game logic for cleaner code.',
+            pattern: 'Input delegation pattern'
+        },
+        'collision': {
+            title: '💥 Collision Detection',
+            content: 'Checks if objects overlap. Games often use bounding boxes or circles for efficient collision checks.',
+            pattern: 'Spatial collision pattern'
+        },
+        'score': {
+            title: '🏆 Scoring System',
+            content: 'Manages player score. Good practice to separate scoring logic from game mechanics.',
+            pattern: 'Score delegation pattern'
+        }
+    };
+
+    // ==========================================
+    // FLOW TRACKING - Execution Visualization
+    // ==========================================
+
+    let executionFlow = [];      // Tracks function call order
+    let flowSteps = ['Setup', 'Update Loop', 'Collision', 'Score Update'];
+
+    // ==========================================
+    // MERMAID INITIALIZATION - Flowchart Library
+    // ==========================================
+
+    /**
+     * Configure Mermaid for flowchart generation
+     * Used for visualizing code execution flow
+     */
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose',
+        flowchart: {
+            useMaxWidth: false,
+            htmlLabels: true,
+            curve: 'basis'
+        }
+    });
+
+    // ==========================================
+    // INITIALIZATION - Load Game on Page Load
+    // ==========================================
+
+    /**
+     * Main initialization function
+     * Loads game code from multiple sources (priority order):
+     * 1. sessionStorage (from generator page)
+     * 2. URL parameters
+     * 3. localStorage (fallback)
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+        // Check URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const libraryParam = urlParams.get('library');
+        const codeParam = urlParams.get('code');
+
+        // Check session storage (primary source)
+        const editedCode = sessionStorage.getItem('editedGameCode');
+        const editedLibrary = sessionStorage.getItem('gameLibrary');
+
+        if (editedCode && editedLibrary) {
+            // Load from session storage (just generated)
+            gameCode = editedCode;
+            originalCode = editedCode;
+            library = editedLibrary;
+
+            // Clear session storage after loading
+            sessionStorage.removeItem('editedGameCode');
+            sessionStorage.removeItem('gameLibrary');
+
+            // Update UI
+            document.getElementById('libraryBadge').textContent = library.toUpperCase();
+            initMonacoEditor();
+
+        } else if (codeParam && libraryParam) {
+            // Load from URL parameters
+            try {
+                gameCode = decodeURIComponent(codeParam);
+                originalCode = gameCode;
+                library = libraryParam;
+                document.getElementById('libraryBadge').textContent = library.toUpperCase();
+                initMonacoEditor();
+            } catch (e) {
+                showError('Failed to load game data.');
+            }
+
+        } else {
+            // Fallback: Load from localStorage
+            gameCode = localStorage.getItem('gameCode');
+            originalCode = gameCode;
+            library = localStorage.getItem('gameLibrary');
+
+            if (gameCode && library) {
+                document.getElementById('libraryBadge').textContent = library.toUpperCase();
+                initMonacoEditor();
+            } else {
+                showError('No game code found. Please generate a game first.');
+            }
+        }
+    });
+
+    // ==========================================
+    // MONACO EDITOR - Initialization
+    // ==========================================
+
+    /**
+     * Initialize Monaco code editor
+     * Sets up editor with saved theme, custom themes, and feature initialization
+     */
+    function initMonacoEditor() {
+        // Configure Monaco loader
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+
+        require(['vs/editor/editor.main'], function () {
+            // Load saved theme preference
+            const savedTheme = localStorage.getItem('editorTheme') || 'vs-dark';
+
+            // Load and register custom themes from localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('customTheme_')) {
+                    const themeName = key.replace('customTheme_', '');
+                    const themeJson = localStorage.getItem(key);
+                    try {
+                        const themeData = JSON.parse(themeJson);
+                        monaco.editor.defineTheme(themeName, themeData);
+                        updateThemeDropdown(themeName);
+                    } catch (e) {
+                        console.error('Failed to load custom theme:', themeName);
+                    }
+                }
+            }
+
+            // Create editor instance
+            editor = monaco.editor.create(document.getElementById('editorContainer'), {
+                value: gameCode,
+                language: 'javascript',
+                theme: savedTheme,
+                fontSize: 14,
+                minimap: { enabled: true },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                wordWrap: 'on'
+            });
+
+            // Set theme dropdown to match
+            document.getElementById('themeSelector').value = savedTheme;
+
+            // Parse function locations for highlighting
+            parseFunctionLines();
+
+            // Start the game
+            runGame();
+
+            // Initialize educational features after editor loads
+            setTimeout(() => {
+                if (editor) {
+                    setupInteractiveTooltips();
+                    generateDocumentation();
+                    setupFlowVisualization();
+                }
+            }, 1000);
+        });
+    }
+
+    // ==========================================
+    // FUNCTION PARSING - Build Line Number Map
+    // ==========================================
+
+    /**
+     * Parse game code to map function names to line numbers
+     * Used for live highlighting when functions execute
+     * Supports both function declarations and object methods
+     */
+    function parseFunctionLines() {
+        const lines = gameCode.split('\n');
+        functionLineMap = {};
+
+        lines.forEach((line, index) => {
+            const lineNumber = index + 1;
+
+            // Match function declarations: function name() {}
+            const funcMatch = line.match(/function\s+(\w+)\s*\(/);
+            if (funcMatch) {
+                functionLineMap[funcMatch[1]] = lineNumber;
+            }
+
+            // Match object methods: name: function() {}
+            const methodMatch = line.match(/(\w+)\s*:\s*function\s*\(/);
+            if (methodMatch) {
+                functionLineMap[methodMatch[1]] = lineNumber;
+            }
+        });
+
+        console.log('📍 Function map:', functionLineMap);
+    }
+
+    // ==========================================
+    // LIVE HIGHLIGHTING - Function Execution Tracking
+    // ==========================================
+
+    /**
+     * Highlight a function in the editor when it executes
+     * Includes cooldown to prevent spam and filter support
+     * 
+     * @param {string} functionName - Name of executed function
+     * @param {number} duration - How long to show highlight (ms)
+     */
+    function highlightFunction(functionName, duration = 3000) {
+        // Safety checks
+        if (!editor || !functionLineMap[functionName]) return;
+
+        // Skip high-frequency functions (draw/update loops)
+        if (functionName === 'draw' || functionName === 'update') return;
+
+        // Check if function passes current filter
+        if (!shouldHighlightFunction(functionName)) {
+            console.log(`🚫 Filtered: ${functionName}() (filter: ${currentFilter})`);
+            return;
+        }
+
+        // Cooldown check: don't highlight same function within 2 seconds
+        const now = Date.now();
+        if (highlightCooldowns[functionName] && (now - highlightCooldowns[functionName]) < 2000) return;
+        highlightCooldowns[functionName] = now;
+
+        const lineNumber = functionLineMap[functionName];
+
+        // Clear previous highlight
+        if (currentHighlight) {
+            editor.deltaDecorations(currentHighlight, []);
+        }
+
+        // Add new highlight decoration
+        currentHighlight = editor.deltaDecorations([], [{
+            range: new monaco.Range(lineNumber, 1, lineNumber, 1000),
+            options: {
+                isWholeLine: true,
+                className: 'highlighted-line',
+                glyphMarginClassName: 'highlighted-glyph',
+                glyphMarginHoverMessage: { value: `**${functionName}()** just executed!` }
+            }
+        }]);
+
+        // Show notification
+        showFunctionNotification(functionName, lineNumber);
+
+        // Center line in editor (only first time)
+        if (!highlightedOnce.has(functionName)) {
+            editor.revealLineInCenter(lineNumber, 1);
+            highlightedOnce.add(functionName);
+        }
+
+        // Remove highlight after duration
+        setTimeout(() => {
+            if (currentHighlight) {
+                editor.deltaDecorations(currentHighlight, []);
+                currentHighlight = null;
+            }
+        }, duration);
+
+        // Track for flow visualization
+        trackExecutionFlow(functionName);
+    }
+
+    // ==========================================
+    // NOTIFICATIONS - Function Execution Alerts
+    // ==========================================
+
+    let activeNotifications = 0;
+    const MAX_VISIBLE_NOTIFICATIONS = 3;
+
+    /**
+     * Show popup notification when function executes
+     * Stacks multiple notifications vertically
+     * 
+     * @param {string} functionName - Function that executed
+     * @param {number} lineNumber - Line number of function
+     */
+    function showFunctionNotification(functionName, lineNumber) {
+        // Limit visible notifications to prevent clutter
+        if (activeNotifications >= MAX_VISIBLE_NOTIFICATIONS) return;
+
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'function-notification';
+
+        // Stack notifications upward from bottom
+        const offset = activeNotifications * 70;
+        notification.style.bottom = `${110 + offset}px`; // Above AI bubble
+
+        notification.innerHTML = `
+            <div class="notification-icon">⚡</div>
+            <div class="notification-content">
+                <div class="notification-title">${functionName}()</div>
+                <div class="notification-line">Line ${lineNumber}</div>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+        activeNotifications++;
+
+        // Animate in
+        setTimeout(() => notification.classList.add('show'), 10);
+
+        // Auto-dismiss after 2 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            activeNotifications--;
+            setTimeout(() => notification.remove(), 300);
+        }, 2000);
+    }
+
+    // ==========================================
+    // HIGHLIGHT FILTERS - Event Type Filtering
+    // ==========================================
+
+    /**
+     * Update which types of functions get highlighted
+     * Allows focusing on specific game events (input, collision, etc.)
+     * 
+     * @param {string} filter - Filter mode ('all', 'input', 'collision', etc.)
+     */
+    function updateHighlightFilter(filter) {
+        currentFilter = filter;
+
+        // Clear any active highlights
+        if (currentHighlight && editor) {
+            editor.deltaDecorations(currentHighlight, []);
+            currentHighlight = null;
+        }
+
+        // Update filter UI styling
+        const filterContainer = document.querySelector('.filter-compact');
+        const filterSelect = document.querySelector('.filter-select');
+
+        if (filter === 'none') {
+            // Red styling for disabled
+            filterContainer.style.background = 'rgba(220, 38, 38, 0.08)';
+            filterContainer.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+            filterSelect.style.color = '#fca5a5';
+        } else {
+            // Green styling for active
+            filterContainer.style.background = 'rgba(0, 255, 136, 0.08)';
+            filterContainer.style.borderColor = 'rgba(0, 255, 136, 0.25)';
+            filterSelect.style.color = '#00ff88';
+        }
+
+        // Show toast notification
+        showFilterToast(filter);
+    }
+
+    /**
+     * Show toast message for filter change
+     * 
+     * @param {string} filter - Filter mode to display
+     */
+    function showFilterToast(filter) {
+        const filterNames = {
+            'all': '🎯 All Events',
+            'input': '⌨️ Input Only',
+            'collision': '💥 Collisions Only',
+            'scoring': '🏆 Scoring Only',
+            'gamestate': '🎮 Game State',
+            'setup': '⚙️ Setup Only',
+            'none': '🚫 Highlighting Disabled'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = 'filter-toast';
+        toast.textContent = filterNames[filter] || filter;
+
+        document.body.appendChild(toast);
+
+        // Animate in
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        // Auto-dismiss after 1.5 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 1500);
+    }
+
+    /**
+     * Check if function should be highlighted based on current filter
+     * Uses keyword matching to categorize functions
+     * 
+     * @param {string} functionName - Function to check
+     * @returns {boolean} True if function should be highlighted
+     */
+    function shouldHighlightFunction(functionName) {
+        if (currentFilter === 'none') return false;
+        if (currentFilter === 'all') return true;
+
+        const lowerName = functionName.toLowerCase();
+
+        switch (currentFilter) {
+            case 'input':
+                // Match input-related function names
+                return ['key', 'mouse', 'click', 'press', 'touch'].some(k => lowerName.includes(k));
+
+            case 'collision':
+                // Match collision-related function names
+                return ['collision', 'collide', 'hit', 'overlap', 'contact', 'crash'].some(k => lowerName.includes(k));
+
+            case 'scoring':
+                // Match score-related function names
+                return ['score', 'point', 'coin', 'gem', 'collect', 'pickup', 'bonus', 'powerup'].some(k => lowerName.includes(k));
+
+            case 'gamestate':
+                // Match game state function names
+                return ['game', 'level', 'win', 'lose', 'victory', 'defeat', 'over', 'complete', 'restart', 'pause'].some(k => lowerName.includes(k));
+
+            case 'setup':
+                // Match initialization function names
+                return ['setup', 'init', 'create', 'preload', 'start', 'reset', 'begin'].some(k => lowerName.includes(k));
+
+            default:
+                return true;
+        }
+    }
+
+    // ==========================================
+    // EXPOSE HIGHLIGHT FUNCTION TO WINDOW
+    // Allows wrapped game code to trigger highlights
+    // ==========================================
+
+    window.highlightCodeFunction = highlightFunction;
+
+    // ==========================================
+    // GAME EXECUTION - Run Game with Live Tracking
+    // ==========================================
+
+    /**
+     * Execute the game code with function tracking
+     * Wraps important functions to trigger live highlighting
+     * Different logic for p5.js vs Phaser games
+     */
+    function runGame() {
+        const container = document.getElementById('gameContainer');
+        container.innerHTML = '';
+
+        try {
+            if (library === 'p5js') {
+                // ========== P5.JS EXECUTION ==========
+
+                let wrappedCode = gameCode;
+
+                // Define patterns for functions we want to track
+                const importantPatterns = [
+                    'keyPressed', 'keyReleased', 'mousePressed', 'mouseClicked', 'mouseReleased', // Input
+                    'collision', 'collect', 'hit', 'kill', 'destroy', // Collision
+                    'spawn', 'enemy', // Game objects
+                    'gameOver', 'levelComplete', 'restart', 'victory', 'defeat', 'win', 'lose', // Game state
+                    'score', 'point', 'coin', 'gem', 'powerup', 'bonus', // Scoring
+                    'jump', 'shoot', 'attack', 'move', 'dash', // Actions
+                    'setup', 'reset', 'init', 'start' // Setup
+                ];
+
+                // Extract all function names from code
+                const functionRegex = /function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g;
+                const allFunctions = [];
+                let match;
+                while ((match = functionRegex.exec(gameCode)) !== null) {
+                    allFunctions.push(match[1]);
+                }
+
+                // Filter to only important functions (exclude draw/preload which run constantly)
+                const functionsToWrap = allFunctions.filter(funcName => {
+                    if (funcName === 'draw' || funcName === 'preload') return false;
+                    const lowerName = funcName.toLowerCase();
+                    return importantPatterns.some(pattern => lowerName.includes(pattern.toLowerCase()));
+                });
+
+                // Wrap each function with highlight trigger
+                // Pattern: function name() { highlight(); return original(); }
+                functionsToWrap.forEach(funcName => {
+                    const funcPattern = new RegExp(`function\\s+${funcName}\\s*\\(`, 'g');
+                    wrappedCode = wrappedCode.replace(
+                        funcPattern,
+                        `function ${funcName}() { window.highlightCodeFunction('${funcName}', 3000); return _original_${funcName}.apply(this, arguments); } function _original_${funcName}(`
+                    );
+                });
+
+                // Inject wrapped code into page
+                const script = document.createElement('script');
+                script.id = 'game-script';
+                script.textContent = wrappedCode;
+                document.body.appendChild(script);
+
+                // Find and move p5.js canvas into game container
+                let attempts = 0;
+                const findAndMoveCanvas = () => {
+                    attempts++;
+                    let canvas = document.querySelector('canvas#defaultCanvas0');
+
+                    if (canvas) {
+                        container.innerHTML = '';
+                        container.appendChild(canvas);
+                        canvas.style.cssText = ''; // Clear inline styles
+                    } else if (attempts < 20) {
+                        // Keep trying for 2 seconds
+                        setTimeout(findAndMoveCanvas, 100);
+                    }
+                };
+                setTimeout(findAndMoveCanvas, 200);
+
+            } else if (library === 'phaser') {
+                // ========== PHASER EXECUTION ==========
+
+                let wrappedCode = gameCode;
+
+                // Define patterns for Phaser functions we want to track
+                const importantPatterns = [
+                    'preload', 'create', 'setup', 'init', // Setup
+                    'collision', 'overlap', // Collision (Phaser-specific)
+                    'collect', 'hit', 'kill', 'destroy', // Collision actions
+                    'gameOver', 'victory', 'defeat', 'win', 'lose', 'restart', // Game state
+                    'score', 'point', 'coin', 'gem', 'powerup', // Scoring
+                    'jump', 'shoot', 'attack', // Actions
+                    'spawn', 'enemy' // Game objects
+                ];
+
+                // Extract all function names
+                const functionRegex = /function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g;
+                const allFunctions = [];
+                let match;
+                while ((match = functionRegex.exec(gameCode)) !== null) {
+                    allFunctions.push(match[1]);
+                }
+
+                // Filter functions (exclude update/render which run every frame)
+                const functionsToWrap = allFunctions.filter(funcName => {
+                    if (funcName === 'update' || funcName === 'render') return false;
+                    const lowerName = funcName.toLowerCase();
+                    return importantPatterns.some(pattern => lowerName.includes(pattern.toLowerCase()));
+                });
+
+                // Wrap functions with highlight trigger
+                functionsToWrap.forEach(funcName => {
+                    const funcPattern = new RegExp(`function\\s+${funcName}\\s*\\(`, 'g');
+                    wrappedCode = wrappedCode.replace(
+                        funcPattern,
+                        `function ${funcName}() { window.highlightCodeFunction('${funcName}', 3000); return _original_${funcName}.apply(this, arguments); } function _original_${funcName}(`
+                    );
+                });
+
+                // Inject wrapped code into page
+                const script = document.createElement('script');
+                script.id = 'game-script';
+                script.textContent = wrappedCode;
+                document.body.appendChild(script);
+
+                // Find and move Phaser canvas into game container
+                let attempts = 0;
+                const findGameCanvas = () => {
+                    attempts++;
+                    const allCanvases = Array.from(document.querySelectorAll('canvas'));
+
+                    // Find game canvas (exclude Monaco editor canvases)
+                    const gameCanvas = allCanvases.find(canvas =>
+                        canvas.width > 400 &&
+                        !canvas.classList.contains('minimap-decorations-layer') &&
+                        !canvas.classList.contains('decorationsOverviewRuler')
+                    );
+
+                    if (gameCanvas) {
+                        container.innerHTML = '';
+                        container.appendChild(gameCanvas);
+                    } else if (attempts < 10) {
+                        // Keep trying for 2 seconds
+                        setTimeout(findGameCanvas, 200);
+                    }
+                };
+                setTimeout(findGameCanvas, 500);
+            }
+
+        } catch (error) {
+            console.error('Game error:', error);
+        }
+    }
+
+    // ==========================================
+    // THEME MANAGEMENT - Editor Appearance
+    // ==========================================
+
+    /**
+     * Change editor theme
+     * @param {string} theme - Theme name or 'custom' to open import modal
+     */
+    function changeTheme(theme) {
+        if (theme === 'custom') {
+            openThemeModal();
+            return;
+        }
+        if (editor) {
+            monaco.editor.setTheme(theme);
+            localStorage.setItem('editorTheme', theme);
+        }
+    }
+
+    /**
+     * Open custom theme import modal
+     */
+    function openThemeModal() {
+        document.getElementById('themeModal').style.display = 'flex';
+        // Reset dropdown to current theme
+        document.getElementById('themeSelector').value = localStorage.getItem('editorTheme') || 'vs-dark';
+    }
+
+    /**
+     * Close custom theme import modal
+     */
+    function closeThemeModal() {
+        document.getElementById('themeModal').style.display = 'none';
+    }
+
+    /**
+     * Apply custom theme from user input
+     * Validates JSON, defines theme in Monaco, and saves to localStorage
+     */
+    function applyCustomTheme() {
+        const themeName = document.getElementById('customThemeName').value.trim();
+        const themeJson = document.getElementById('customThemeJson').value.trim();
+
+        if (!themeName || !themeJson) {
+            alert('Please enter both name and JSON!');
+            return;
+        }
+
+        try {
+            // Parse and validate JSON
+            const themeData = JSON.parse(themeJson);
+
+            // Define theme in Monaco
+            monaco.editor.defineTheme(themeName, themeData);
+            monaco.editor.setTheme(themeName);
+
+            // Save to localStorage
+            localStorage.setItem('editorTheme', themeName);
+            localStorage.setItem('customTheme_' + themeName, themeJson);
+
+            // Add to dropdown
+            updateThemeDropdown(themeName);
+
+            closeThemeModal();
+            alert('✅ Theme applied!');
+        } catch (error) {
+            alert('❌ Invalid JSON: ' + error.message);
+        }
+    }
+
+    /**
+     * Add custom theme to dropdown selector
+     * @param {string} themeName - Name of theme to add
+     */
+    function updateThemeDropdown(themeName) {
+        const selector = document.getElementById('themeSelector');
+
+        // Check if option already exists
+        let customOption = Array.from(selector.options).find(opt => opt.value === themeName);
+
+        if (!customOption) {
+            // Add new option before "Custom..." option
+            const newOption = document.createElement('option');
+            newOption.value = themeName;
+            newOption.textContent = '🎨 ' + themeName;
+            selector.insertBefore(newOption, selector.options[selector.options.length - 1]);
+        }
+
+        selector.value = themeName;
+    }
+
+    // ==========================================
+    // CODE EXECUTION - Run & Reset
+    // ==========================================
+
+    /**
+     * Run edited code
+     * Saves current editor content and reloads page
+     */
+    function runEditedCode() {
+        sessionStorage.setItem('editedGameCode', editor.getValue());
+        sessionStorage.setItem('gameLibrary', library);
+        location.reload();
+    }
+
+    /**
+     * Restart game (reload page)
+     */
+    function restartGame() {
+        location.reload();
+    }
+
+    /**
+     * Reset code to original version
+     * Restores unmodified code and reloads
+     */
+    function resetCode() {
+        if (editor && originalCode) {
+            editor.setValue(originalCode);
+            sessionStorage.setItem('editedGameCode', originalCode);
+            sessionStorage.setItem('gameLibrary', library);
+            location.reload();
+        }
+    }
+
+    // ==========================================
+    // FILE OPERATIONS - Copy & Download
+    // ==========================================
+
+    /**
+     * Copy current code to clipboard
+     * Shows visual feedback on button
+     */
+    function copyCode() {
+        navigator.clipboard.writeText(editor.getValue()).then(() => {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✓';
+            setTimeout(() => btn.textContent = originalText, 2000);
+        });
+    }
+
+    /**
+     * Download code as JavaScript file
+     */
+    function downloadCode() {
+        const blob = new Blob([editor.getValue()], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `game-${library}-${Date.now()}.js`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        // Close download menu
+        document.getElementById('downloadMenu').style.display = 'none';
+    }
+
+    /**
+     * Toggle download menu dropdown
+     * @param {Event} event - Click event
+     */
+    function toggleDownloadMenu(event) {
+        event.stopPropagation();
+        const menu = document.getElementById('downloadMenu');
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    /**
+     * Close download menu when clicking outside
+     */
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('downloadMenu');
+        if (menu) menu.style.display = 'none';
+    });
+
+    /**
+     * Download game as standalone HTML file
+     * Creates self-contained HTML with embedded game code
+     */
+    function downloadStandaloneHTML() {
+        const code = editor.getValue();
+        const lib = library; // p5js or phaser
+
+        // Generate complete HTML document
+        const standaloneHTML = generateStandaloneHTML(code, lib);
+
+        // Create and trigger download
+        const blob = new Blob([standaloneHTML], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `game-${lib}-${Date.now()}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        // Close download menu
+        document.getElementById('downloadMenu').style.display = 'none';
+
+        console.log('✅ Standalone HTML downloaded!');
+    }
+
+    /**
+     * Generate standalone HTML file with embedded game
+     * Creates a complete, self-contained HTML document
+     * 
+     * @param {string} gameCode - JavaScript game code to embed
+     * @param {string} library - Game library (p5js or phaser)
+     * @returns {string} Complete HTML document as string
+     */
+    function generateStandaloneHTML(gameCode, library) {
+        const isP5js = library === 'p5js';
+
+        // Select appropriate library CDN
+        const libraryScript = isP5js
+            ? '<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"><\/script>'
+            : '<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"><\/script>';
+
+        // Generate complete HTML document
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game - Generated by games.random</title>
+    ${libraryScript}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        #game-container {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        .watermark {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            font-size: 0.85em;
+            color: #666;
+            position: relative;
+            z-index: 1000;
+            background: #1a1a1a;
+            border-radius: 4px;
+        }
+        .watermark a {
+            color: #00ff88;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .watermark a:hover {
+            text-decoration: underline;
+        }
+        /* Ensure game canvas doesn't overlap watermark */
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game"></div>
+    </div>
+    <div class="watermark">
+        Generated by <a href="https://github.com/yourusername/games-random" target="_blank">games.random</a>
+    </div>
+
+    <script>
+${gameCode}
+    <\/script>
+</body>
+</html>`;
+    }
+
+       // ==========================================
+        // FULLSCREEN TOGGLE - Game Panel Expansion
+        // ==========================================
+
+        /**
+         * Toggle fullscreen mode for game panel
+         * Expands game panel to fill entire viewport
+         */
+        function toggleFullscreen() {
+            const panel = document.getElementById('gamePanel');
+            const btn = event.target;
+
+            // Toggle fullscreen class (CSS handles the styling)
+            panel.classList.toggle('fullscreen');
+
+            // Update button text
+            if (panel.classList.contains('fullscreen')) {
+                btn.textContent = 'Exit Fullscreen';
+            } else {
+                btn.textContent = 'Fullscreen';
+            }
+        }
+
+        /**
+         * Display error message in game container
+         * @param {string} message - Error message to display
+         */
+        function showError(message) {
+            document.getElementById('gameContainer').innerHTML = `
+                <div class="error">
+                    <h3 style="margin-bottom: 10px;">Error</h3>
+                    <p>${message}</p>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="window.location.href='index.html'">
+                        Generate New Game
+                    </button>
+                </div>`;
+        }
+
+        // ==========================================
+        // EDUCATIONAL FEATURES IMPLEMENTATION
+        // Interactive tooltips, documentation, and flow visualization
+        // ==========================================
+
+        // ==========================================
+        // INTERACTIVE TOOLTIPS - Hover Explanations
+        // ==========================================
+
+        /**
+         * Setup interactive tooltips on hover
+         * Shows educational explanations when hovering over code patterns
+         */
+        function setupInteractiveTooltips() {
+            if (!editor) return;
+
+            // Add hover provider for educational tooltips
+            editor.onMouseMove((e) => {
+                const position = e.target.position;
+                if (!position) return;
+
+                const lineNumber = position.lineNumber;
+                const lineContent = editor.getModel().getLineContent(lineNumber);
+
+                // Check if this line contains any interesting patterns
+                const matchedPattern = Object.keys(tooltipData).find(pattern =>
+                    lineContent.toLowerCase().includes(pattern.toLowerCase())
+                );
+
+                // Show tooltip if pattern matched and no tooltip currently visible
+                if (matchedPattern && !document.querySelector('.code-tooltip')) {
+                    showTooltip(e.event.pos.x, e.event.pos.y, tooltipData[matchedPattern]);
+                }
+            });
+
+            // Hide tooltip when mouse leaves editor
+            editor.onMouseLeave(() => {
+                hideTooltip();
+            });
+        }
+
+        /**
+         * Display educational tooltip at cursor position
+         * @param {number} x - X coordinate for tooltip
+         * @param {number} y - Y coordinate for tooltip
+         * @param {Object} data - Tooltip content (title, content, pattern)
+         */
+        function showTooltip(x, y, data) {
+            hideTooltip(); // Remove any existing tooltip
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'code-tooltip';
+            tooltip.style.left = (x + 10) + 'px';
+            tooltip.style.top = (y + 10) + 'px';
+
+            tooltip.innerHTML = `
+                <div class="tooltip-title">
+                    <span class="tooltip-icon">💡</span>
+                    ${data.title}
+                </div>
+                <div class="tooltip-content">
+                    ${data.content}
+                </div>
+                <div class="tooltip-pattern">
+                    ${data.pattern}
+                </div>
+            `;
+
+            document.body.appendChild(tooltip);
+
+            // Auto-hide after 5 seconds
+            setTimeout(hideTooltip, 5000);
+        }
+
+        /**
+         * Remove tooltip from DOM
+         */
+        function hideTooltip() {
+            const tooltip = document.querySelector('.code-tooltip');
+            if (tooltip) {
+                tooltip.remove();
+            }
+        }
+
+        // ==========================================
+        // DOCUMENTATION GENERATOR - Code Analysis
+        // ==========================================
+
+        /**
+         * Generate documentation for current game code
+         * Analyzes functions, dependencies, and game patterns
+         */
+        function generateDocumentation() {
+            if (!editor) return;
+
+            const code = editor.getValue();
+            const functions = parseFunctions(code);
+            const summary = generateGameSummary(code, functions);
+            const dependencies = analyzeDependencies(code, functions);
+
+            // Update documentation panel UI
+            document.getElementById('gameSummary').innerHTML = summary;
+            document.getElementById('functionList').innerHTML = generateFunctionList(functions);
+
+            // Generate and render dependency graph
+            renderDependencyGraph(dependencies);
+        }
+
+        /**
+         * Parse all function declarations from code
+         * @param {string} code - Game code to parse
+         * @returns {Array} Array of function objects with name and line number
+         */
+        function parseFunctions(code) {
+            const functionRegex = /function\s+(\w+)\s*\([^)]*\)\s*\{/g;
+            const functions = [];
+            let match;
+
+            while ((match = functionRegex.exec(code)) !== null) {
+                functions.push({
+                    name: match[1],
+                    line: getLineNumber(code, match.index)
+                });
+            }
+
+            return functions;
+        }
+
+        /**
+         * Get line number from character index in code
+         * @param {string} code - Full code string
+         * @param {number} index - Character index
+         * @returns {number} Line number
+         */
+        function getLineNumber(code, index) {
+            return code.substring(0, index).split('\n').length;
+        }
+
+        /**
+         * Generate game architecture summary
+         * Detects common game patterns and features
+         * @param {string} code - Game code
+         * @param {Array} functions - Parsed functions list
+         * @returns {string} HTML summary of game features
+         */
+        function generateGameSummary(code, functions) {
+            // Detect common game patterns
+            const hasSetup = functions.some(f => f.name.toLowerCase().includes('setup'));
+            const hasUpdate = functions.some(f => f.name.toLowerCase().includes('draw') || f.name.toLowerCase().includes('update'));
+            const hasInput = code.includes('keyPressed') || code.includes('mouse');
+            const hasCollision = code.includes('collision') || code.includes('collide');
+            const hasScoring = code.includes('score') || code.includes('point');
+
+            let summary = '';
+
+            if (hasSetup) summary += '✅ <strong>Setup:</strong> Game initializes properly<br>';
+            if (hasUpdate) summary += '✅ <strong>Game Loop:</strong> Continuous updates<br>';
+            if (hasInput) summary += '✅ <strong>Input:</strong> Player controls detected<br>';
+            if (hasCollision) summary += '✅ <strong>Collision:</strong> Object interaction<br>';
+            if (hasScoring) summary += '✅ <strong>Scoring:</strong> Progress tracking<br>';
+
+            return summary || 'Basic game structure detected. Add more features!';
+        }
+
+        /**
+         * Generate clickable function list HTML
+         * @param {Array} functions - Parsed functions
+         * @returns {string} HTML for function list
+         */
+        function generateFunctionList(functions) {
+            return functions.map(func => `
+                <div class="doc-function" onclick="goToFunctionLine(${func.line})">
+                    <div class="doc-function-name">${func.name}()</div>
+                    <div class="doc-function-desc">Line ${func.line}</div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * Analyze function dependencies (which functions call which)
+         * @param {string} code - Full game code
+         * @param {Array} functions - Parsed functions list
+         * @returns {Array} Array of dependency objects {from, to}
+         */
+        function analyzeDependencies(code, functions) {
+            const dependencies = [];
+
+            functions.forEach(func => {
+                const functionBody = extractFunctionBody(code, func.name);
+
+                // Check if this function calls any other functions
+                functions.forEach(otherFunc => {
+                    if (func.name !== otherFunc.name && functionBody.includes(otherFunc.name + '(')) {
+                        dependencies.push({ from: func.name, to: otherFunc.name });
+                    }
+                });
+            });
+
+            return dependencies;
+        }
+
+        /**
+         * Extract the body of a specific function
+         * @param {string} code - Full game code
+         * @param {string} functionName - Name of function to extract
+         * @returns {string} Function body content
+         */
+        function extractFunctionBody(code, functionName) {
+            const functionStart = code.indexOf('function ' + functionName);
+            if (functionStart === -1) return '';
+
+            // Find matching braces
+            let braceCount = 0;
+            let bodyStart = -1;
+            let bodyEnd = -1;
+
+            for (let i = functionStart; i < code.length; i++) {
+                if (code[i] === '{') {
+                    braceCount++;
+                    if (bodyStart === -1) bodyStart = i + 1;
+                } else if (code[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0) {
+                        bodyEnd = i;
+                        break;
+                    }
+                }
+            }
+
+            return bodyStart !== -1 && bodyEnd !== -1 ? code.substring(bodyStart, bodyEnd) : '';
+        }
+
+        /**
+         * Render function dependency graph using Mermaid
+         * @param {Array} dependencies - Array of {from, to} objects
+         */
+        function renderDependencyGraph(dependencies) {
+            if (dependencies.length === 0) {
+                document.getElementById('dependencyGraph').innerHTML = 'No function dependencies detected.';
+                return;
+            }
+
+            // Create nodes and edges for graph
+            const nodes = [...new Set(dependencies.flatMap(d => [d.from, d.to]))].map(name => ({ id: name, label: name }));
+            const edges = dependencies.map(d => ({ from: d.from, to: d.to }));
+
+            // Generate Mermaid graph syntax
+            const mermaidCode = `
+graph TD
+${edges.map(edge => `    ${edge.from} --> ${edge.to}`).join('\n')}
+`;
+
+            document.getElementById('dependencyGraph').innerHTML = mermaidCode;
+
+            // Re-render mermaid diagram
+            mermaid.init(undefined, document.getElementById('dependencyGraph'));
+        }
+
+        /**
+         * Navigate editor to specific function line
+         * @param {number} lineNumber - Line number to jump to
+         */
+        function goToFunctionLine(lineNumber) {
+            if (editor) {
+                editor.revealLineInCenter(lineNumber);
+                editor.setPosition({ lineNumber: lineNumber, column: 1 });
+                editor.focus();
+            }
+        }
+
+        // ==========================================
+        // CODE FLOW VISUALIZATION - Execution Tracking
+        // ==========================================
+
+        /**
+         * Setup flow visualization UI
+         * Creates step indicators for execution flow
+         */
+        function setupFlowVisualization() {
+            // Initialize flow steps UI
+            const flowStepsContainer = document.getElementById('flowSteps');
+            flowStepsContainer.innerHTML = flowSteps.map((step, index) => `
+                <div class="flow-step ${index === 0 ? 'active' : ''}" id="flowStep-${index}">${step}</div>
+                ${index < flowSteps.length - 1 ? '<div class="flow-arrow">→</div>' : ''}
+            `).join('');
+        }
+
+        /**
+         * Track function execution for flow visualization
+         * @param {string} functionName - Name of executed function
+         */
+        function trackExecutionFlow(functionName) {
+            executionFlow.push({
+                function: functionName,
+                timestamp: Date.now()
+            });
+
+            // Keep only last 10 executions (prevent memory leak)
+            if (executionFlow.length > 10) {
+                executionFlow.shift();
+            }
+
+            updateFlowVisualization();
+        }
+
+        /**
+         * Update flow visualization based on recent execution
+         * Determines which step is currently active
+         */
+        function updateFlowVisualization() {
+            // Get recent function calls (last 3)
+            const recentCalls = executionFlow.slice(-3).map(f => f.function.toLowerCase());
+
+            // Determine current step based on function calls
+            let currentStep = 0;
+            if (recentCalls.some(call => call.includes('setup') || call.includes('init'))) {
+                currentStep = 0; // Setup
+            } else if (recentCalls.some(call => call.includes('draw') || call.includes('update'))) {
+                currentStep = 1; // Update Loop
+            } else if (recentCalls.some(call => call.includes('collision') || call.includes('hit'))) {
+                currentStep = 2; // Collision
+            } else if (recentCalls.some(call => call.includes('score') || call.includes('point'))) {
+                currentStep = 3; // Score Update
+            }
+
+            // Update UI - highlight active step
+            flowSteps.forEach((_, index) => {
+                const stepElement = document.getElementById(`flowStep-${index}`);
+                if (stepElement) {
+                    stepElement.classList.toggle('active', index === currentStep);
+                }
+            });
+
+            // Update flowchart with execution path
+            updateExecutionFlowchart();
+        }
+
+        /**
+         * Update Mermaid flowchart with recent execution path
+         * Highlights recently executed functions
+         */
+        function updateExecutionFlowchart() {
+            const recentFunctions = executionFlow.slice(-5).map(f => f.function);
+
+            // Generate Mermaid flowchart with highlighted functions
+            const mermaidCode = `
+graph LR
+    Setup --> Update
+    Update --> Collision
+    Collision --> Score
+    ${recentFunctions.map((func, i) => `
+    style ${func} fill:#00ff88,color:#000,stroke:#00dd77,stroke-width:2px
+    `).join('')}
+`;
+
+            document.getElementById('flowChart').innerHTML = mermaidCode;
+
+            // Re-render mermaid diagram
+            mermaid.init(undefined, document.getElementById('flowChart'));
+        }
+
+       // ============================================================================
+        // Panel Toggle Functions
+        // ============================================================================
+
+        /**
+         * Toggles the visibility of the documentation panel
+         */
+        function toggleDocumentation() {
+            const panel = document.getElementById('docPanel');
+            const isVisible = panel.style.display !== 'none';
+
+            if (isVisible) {
+                panel.style.display = 'none';
+            } else {
+                panel.style.display = 'block';
+                generateDocumentation(); // Refresh documentation content
+            }
+        }
+
+        /**
+         * Toggles the visibility of the flow visualization panel
+         */
+        function toggleFlowVisualization() {
+            const panel = document.getElementById('flowPanel');
+            const isVisible = panel.style.display !== 'none';
+
+            if (isVisible) {
+                panel.style.display = 'none';
+            } else {
+                panel.style.display = 'block';
+                setupFlowVisualization();
+            }
+        }
+
+        // ============================================================================
+        // AI Chat Functions
+        // ============================================================================
+
+        /**
+         * Opens the AI chat overlay and sets up input isolation
+         */
+        function openAIChat() {
+            const overlay = document.getElementById('aiChatOverlay');
+            const bubble = document.getElementById('aiBubble');
+
+            overlay.classList.add('show');
+            bubble.style.display = 'none';
+
+            // Focus the chat input
+            const input = document.getElementById('aiChatInput');
+            input.focus();
+
+            // Prevent game from receiving keyboard events while chat is open
+            document.addEventListener('keydown', preventGameInput, true);
+            document.addEventListener('keyup', preventGameInput, true);
+            document.addEventListener('keypress', preventGameInput, true);
+        }
+
+        /**
+         * Closes the AI chat overlay and restores normal input flow
+         */
+        function closeAIChat() {
+            const overlay = document.getElementById('aiChatOverlay');
+            const bubble = document.getElementById('aiBubble');
+
+            overlay.classList.remove('show');
+
+            // Show chat bubble after animation completes
+            setTimeout(() => {
+                bubble.style.display = 'flex';
+            }, 400);
+
+            // Re-enable game input handling
+            document.removeEventListener('keydown', preventGameInput, true);
+            document.removeEventListener('keyup', preventGameInput, true);
+            document.removeEventListener('keypress', preventGameInput, true);
+        }
+
+        /**
+         * Prevents keyboard events from reaching the game when chat is active
+         * @param {KeyboardEvent} event - The keyboard event
+         */
+        function preventGameInput(event) {
+            const chatOverlay = document.getElementById('aiChatOverlay');
+
+            if (chatOverlay && chatOverlay.classList.contains('show')) {
+                // Allow events from the chat input itself
+                if (event.target.id === 'aiChatInput') {
+                    return;
+                }
+
+                // Block all other keyboard events
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        }
+
+        /**
+         * Closes the AI chat when clicking on the overlay background
+         * @param {MouseEvent} event - The click event
+         */
+        function closeAIChatOnOverlay(event) {
+            if (event.target === document.getElementById('aiChatOverlay')) {
+                closeAIChat();
+            }
+        }
+
+        /**
+         * Handles Enter key submission in the AI chat input
+         * @param {KeyboardEvent} event - The keypress event
+         */
+        function handleAIChatKeypress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendAIMessage();
+            }
+        }
+
+        /**
+         * Prevents chat input from triggering game controls
+         * @param {KeyboardEvent} event - The keyboard event
+         */
+        function stopGameControls(event) {
+            // Stop the event from bubbling to p5.js/Phaser game
+            event.stopPropagation();
+
+            // Prevent default for game control keys when typing in chat
+            const gameKeys = [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                'w', 'a', 's', 'd'];
+
+            if (gameKeys.includes(event.key)) {
+                event.stopPropagation();
+            }
+        }
+
+        /**
+         * Sends a message to the AI chat API
+         */
+        async function sendAIMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add user message to chat
+            addChatMessage(message, 'user');
+
+            // Clear and reset input field
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Show typing indicator
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'ai-message';
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.innerHTML = `
+        <div class="ai-message-avatar">🤖</div>
+        <div class="ai-message-content" style="opacity: 0.6;">
+            <span class="typing-dots">●●●</span> Thinking...
+        </div>
+    `;
+
+            document.getElementById('aiChatMessages').appendChild(typingIndicator);
+
+            try {
+                // Call the backend API
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        gameCode: editor ? editor.getValue() : gameCode,
+                        library: library
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                typingIndicator.remove();
+
+                if (data.success) {
+                    // Add AI response to chat
+                    addChatMessage(data.reply, 'ai');
+                } else {
+                    addChatMessage(
+                        `❌ Error: ${data.error || 'Failed to get response'}`,
+                        'ai'
+                    );
+                }
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                typingIndicator.remove();
+                addChatMessage(
+                    "❌ Connection error. Make sure the server is running on http://localhost:3000",
+                    'ai'
+                );
+            }
+        }
+
+        /**
+         * Sends a quick message from suggestion chips
+         * @param {string} message - The message to send
+         */
+        function sendQuickMessage(message) {
+            const input = document.getElementById('aiChatInput');
+            input.value = message;
+            sendAIMessage();
+        }
+
+        /**
+         * Adds a message to the chat display
+         * @param {string} text - The message text
+         * @param {string} sender - The sender type ('user' or 'ai')
+         */
+        function addChatMessage(text, sender) {
+            const messagesContainer = document.getElementById('aiChatMessages');
+
+            // Remove welcome message if it exists
+            const welcomeMsg = messagesContainer.querySelector('.ai-welcome-message');
+            if (welcomeMsg) {
+                welcomeMsg.remove();
+            }
+
+            if (sender === 'user') {
+                // User message (right-aligned, green accent)
+                const messageDiv = document.createElement('div');
+                messageDiv.style.display = 'flex';
+                messageDiv.style.justifyContent = 'flex-end';
+                messageDiv.style.animation = 'slideInRight 0.3s ease-out';
+                messageDiv.innerHTML = `
+            <div style="max-width: 75%; 
+                        background: linear-gradient(135deg, 
+                            rgba(0, 255, 136, 0.12) 0%, 
+                            rgba(0, 255, 136, 0.08) 100%); 
+                        border: 1px solid rgba(0, 255, 136, 0.25); 
+                        border-radius: 18px; 
+                        border-top-right-radius: 4px; 
+                        padding: 14px 18px; 
+                        color: #e5e7eb; 
+                        font-size: 0.95em; 
+                        line-height: 1.6; 
+                        box-shadow: 0 2px 8px rgba(0, 255, 136, 0.1);">
+                ${escapeHtml(text)}
+            </div>
+        `;
+                messagesContainer.appendChild(messageDiv);
+            } else {
+                // AI message (left-aligned with avatar)
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'ai-message';
+                messageDiv.innerHTML = `
+            <div class="ai-message-avatar">🤖</div>
+            <div class="ai-message-content">${formatAIMessage(text)}</div>
+        `;
+                messagesContainer.appendChild(messageDiv);
+            }
+
+            // Scroll to the bottom of the chat
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        /**
+         * Escapes HTML special characters to prevent XSS
+         * @param {string} text - The text to escape
+         * @returns {string} - Escaped HTML string
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * Formats AI messages with markdown rendering and syntax highlighting
+         * @param {string} text - The raw AI response text
+         * @returns {string} - Formatted HTML string
+         */
+        function formatAIMessage(text) {
+            let formatted = text;
+            const codeBlocks = [];
+
+            // Extract code blocks and replace with placeholders
+            formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g,
+                (match, lang, code) => {
+                    const id = `code-${Math.random().toString(36).substr(2, 9)}`;
+                    const language = lang || 'javascript';
+                    codeBlocks.push({ id, language, code: code.trim() });
+                    return `<CODE_BLOCK_${codeBlocks.length - 1}>`;
+                }
+            );
+
+            // Escape HTML in non-code sections
+            formatted = escapeHtml(formatted);
+
+            // Apply markdown formatting
+            formatted = formatted
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/`([^`]+)`/g, '<code>$1</code>')          // Inline code
+                .replace(/\n\n/g, '</p><p>')                      // Paragraphs
+                .replace(/\n/g, '<br>');                          // Line breaks
+
+            // Wrap in paragraph tags
+            formatted = '<p>' + formatted + '</p>';
+
+            // Replace code block placeholders with formatted code
+            codeBlocks.forEach((block, index) => {
+                let codeContent;
+
+                // Check if Highlight.js is available
+                if (typeof hljs !== 'undefined') {
+                    try {
+                        codeContent = hljs.highlight(
+                            block.code,
+                            { language: block.language }
+                        ).value;
+                    } catch (e) {
+                        console.warn('Highlight.js error:', e);
+                        codeContent = escapeHtml(block.code);
+                    }
+                } else {
+                    // Fallback if hljs is not loaded
+                    codeContent = escapeHtml(block.code);
+                }
+
+                const codeHTML = `
+            <div class="code-block-wrapper">
+                <pre>
+                    <div class="code-block-header">
+                        <span class="code-block-language">${block.language}</span>
+                        <button class="code-block-copy" 
+                                onclick="copyCodeBlock('${block.id}')">
+                            <span>📋</span>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                    <code id="${block.id}" 
+                          class="hljs language-${block.language}">
+                        ${codeContent}
+                    </code>
+                </pre>
+            </div>
+        `;
+
+                formatted = formatted.replace(
+                    `&lt;CODE_BLOCK_${index}&gt;`,
+                    codeHTML
+                );
+            });
+
+            return formatted;
+        }
+
+        /**
+         * Copies code block content to clipboard with visual feedback
+         * @param {string} blockId - The ID of the code block to copy
+         */
+        function copyCodeBlock(blockId) {
+            const codeBlock = document.getElementById(blockId);
+            const code = codeBlock.textContent;
+
+            navigator.clipboard.writeText(code)
+                .then(() => {
+                    const button = event.target.closest('.code-block-copy');
+                    const originalHTML = button.innerHTML;
+
+                    // Show success state
+                    button.innerHTML = '<span>✓</span><span>Copied!</span>';
+                    button.style.background = 'rgba(0, 255, 136, 0.3)';
+                    button.style.borderColor = 'rgba(0, 255, 136, 0.4)';
+
+                    // Revert after 2 seconds
+                    setTimeout(() => {
+                        button.innerHTML = originalHTML;
+                        button.style.background = 'rgba(0, 255, 136, 0.1)';
+                        button.style.borderColor = 'rgba(0, 255, 136, 0.2)';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    const button = event.target.closest('.code-block-copy');
+
+                    // Show error state
+                    button.innerHTML = '<span>❌</span><span>Failed</span>';
+
+                    setTimeout(() => {
+                        button.innerHTML = '<span>📋</span><span>Copy</span>';
+                    }, 2000);
+                });
+        }
+    </script>
+</body>
+
+</html>

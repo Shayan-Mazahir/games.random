@@ -1,0 +1,1417 @@
+<!--
+  games.random - Main Application Interface
+  
+  AI-powered 2D game generator with real-time streaming, user authentication,
+  and game library management.
+  
+  Features:
+  - Natural language game description input
+  - Library selection (p5.js or Phaser 3)
+  - Real-time code streaming with Server-Sent Events
+  - Google OAuth authentication
+  - Save and manage generated games
+  - Responsive dark theme UI
+  
+  @author Shayan Mazahir, Mohammad Samin, Rayyan Moosani
+  @license GPL-3.0-or-later
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>games.random - AI Game Generator</title>
+
+  <!-- Google Fonts: Inter for UI text, JetBrains Mono for code display -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    /* ========== RESET & BASE STYLES ========== */
+
+    /**
+     * CSS Reset
+     * Removes default browser styling for consistent appearance
+     */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /**
+     * Body Base Styles
+     * Dark theme with radial gradient accents and subtle grid pattern
+     */
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top left,
+          rgba(0, 255, 136, 0.12),
+          transparent 55%),
+        radial-gradient(circle at bottom right,
+          rgba(0, 150, 255, 0.08),
+          transparent 60%),
+        #050505;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 40px 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /**
+     * Subtle Grid Background
+     * Adds texture to the dark background
+     */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(100, 100, 100, 0.03) 1px,
+          transparent 1px),
+        linear-gradient(90deg,
+          rgba(100, 100, 100, 0.03) 1px,
+          transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ========== FLOATING GLOW ORBS ========== */
+
+    /**
+     * Decorative Glow Orbs
+     * Floating background elements that respond to mouse movement
+     */
+    .orb {
+      position: fixed;
+      border-radius: 999px;
+      filter: blur(25px);
+      opacity: 0.35;
+      z-index: 0;
+      pointer-events: none;
+      transition: transform 0.4s ease-out;
+    }
+
+    .orb-left {
+      width: 260px;
+      height: 260px;
+      background: rgba(0, 255, 136, 0.5);
+      top: 10%;
+      left: -60px;
+    }
+
+    .orb-right {
+      width: 320px;
+      height: 320px;
+      background: rgba(0, 150, 255, 0.5);
+      bottom: -80px;
+      right: -40px;
+    }
+
+    /**
+     * Float Animation
+     * Subtle vertical movement for visual interest
+     */
+    @keyframes float {
+      0% {
+        transform: translateY(0px);
+      }
+
+      100% {
+        transform: translateY(-20px);
+      }
+    }
+
+    /**
+     * Main Container
+     * Centers content and provides max width
+     */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ========== HEADER ========== */
+
+    /**
+     * Header Section
+     * Contains logo, tagline, and user authentication controls
+     */
+    .header {
+      margin-bottom: 28px;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .header-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /**
+     * Logo Section
+     * Brand identity with play icon and highlight
+     */
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    /**
+     * User Section
+     * Authentication controls and user info display
+     */
+    .user-section {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-shrink: 0;
+      align-self: flex-start;
+    }
+
+    /**
+     * Logo Styling
+     * Large, bold, uppercase branding with accent color
+     */
+    .logo {
+      font-size: 2.4em;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /**
+     * Play Icon
+     * Decorative play button before logo
+     */
+    .logo::before {
+      content: "▶";
+      font-size: 0.75em;
+      color: #00ff88;
+    }
+
+    .logo-highlight {
+      color: #00ff88;
+    }
+
+    /**
+     * Beta Badge
+     * Indicates early access version
+     */
+    .beta-badge {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      color: #00ff88;
+      padding: 3px 11px;
+      border-radius: 20px;
+      font-size: 0.72em;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    /**
+     * Taglines
+     * Main and secondary descriptive text
+     */
+    .tagline {
+      color: #c0c0c0;
+      font-size: 1.05em;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+
+    .mini-tagline {
+      margin-top: 4px;
+      font-size: 0.9em;
+      color: #808080;
+    }
+
+    /* ========== INFO BAR ========== */
+
+    /**
+     * Information Bar
+     * Displays system status, model info, and keyboard shortcuts
+     */
+    .info-bar {
+      display: flex;
+      gap: 22px;
+      padding: 16px 18px;
+      background: rgba(8, 8, 8, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      margin: 22px 0 26px;
+      backdrop-filter: blur(16px);
+      flex-wrap: wrap;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82em;
+    }
+
+    /**
+     * Status Indicator Dot
+     * Animated dot showing online/offline status
+     */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00ff88;
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.9);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .info-label {
+      color: #707070;
+    }
+
+    .info-value {
+      color: #e0e0e0;
+      font-weight: 600;
+    }
+
+    /* ========== MAIN GRID ========== */
+
+    /**
+     * Content Grid Layout
+     * Two-column layout: description input (left), library selection (right)
+     */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 26px;
+      margin-bottom: 20px;
+    }
+
+    /**
+     * Card Component
+     * Glassmorphic card with hover effects
+     */
+    .card {
+      background: radial-gradient(circle at top left,
+          rgba(255, 255, 255, 0.06),
+          transparent 55%),
+        rgba(15, 15, 15, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px 24px 22px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
+      transition: transform 0.25s ease, box-shadow 0.25s ease,
+        border-color 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /**
+     * Card Hover Effect
+     * Lifts card and highlights border
+     */
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 26px 60px rgba(0, 0, 0, 0.9);
+      border-color: rgba(0, 255, 136, 0.25);
+    }
+
+    /**
+     * Card Title
+     * Section headers with step numbering
+     */
+    .card-title {
+      font-size: 0.82em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      color: #808080;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-title span.step {
+      color: #00ff88;
+    }
+
+    /* ========== TEXTAREA INPUT ========== */
+
+    /**
+     * Game Description Textarea
+     * Main input for natural language game descriptions
+     */
+    textarea {
+      width: 100%;
+      padding: 16px;
+      background: rgba(10, 10, 10, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      color: #e0e0e0;
+      font-size: 0.95em;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 135px;
+      transition: all 0.2s ease;
+      line-height: 1.6;
+    }
+
+    /**
+     * Textarea Focus State
+     * Highlights with brand color when active
+     */
+    textarea:focus {
+      outline: none;
+      border-color: #00ff88;
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.3);
+      background: rgba(14, 14, 14, 0.98);
+    }
+
+    textarea::placeholder {
+      color: #555;
+    }
+
+    /* ========== LEARNING BUTTON ========== */
+
+    /**
+     * Learning Game Button
+     * Quick-start button that fills textarea with educational game template
+     */
+    .learn-btn {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 255, 136, 0.4);
+      background: radial-gradient(circle at top left,
+          rgba(0, 255, 136, 0.18),
+          transparent 70%);
+      color: #e0e0e0;
+      font-size: 0.9em;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .learn-btn:hover {
+      background: radial-gradient(circle at top left,
+          rgba(0, 255, 136, 0.25),
+          transparent 70%);
+      box-shadow: 0 0 22px rgba(0, 255, 136, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .learn-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 0 14px rgba(0, 255, 136, 0.25);
+    }
+
+    .learn-btn-icon {
+      font-size: 1.05em;
+    }
+
+    /* ========== QUICK EXAMPLES ========== */
+
+    /**
+     * Example Chips Section
+     * Pre-made game suggestions as clickable chips
+     */
+    .examples {
+      margin-top: 16px;
+    }
+
+    .examples-label {
+      font-size: 0.8em;
+      color: #666;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .example-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /**
+     * Example Chip
+     * Clickable pill that fills textarea with example description
+     */
+    .example-chip {
+      padding: 7px 13px;
+      background: rgba(40, 40, 40, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      color: #b0b0b0;
+      font-size: 0.8em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /**
+     * Lightning Icon
+     * Indicates quick-start examples
+     */
+    .example-chip::before {
+      content: "⚡";
+      margin-right: 6px;
+      font-size: 0.85em;
+    }
+
+    .example-chip:hover {
+      background: rgba(50, 50, 50, 0.95);
+      border-color: rgba(0, 255, 136, 0.4);
+      color: #e0e0e0;
+    }
+
+    /* ========== LIBRARY SELECTOR ========== */
+
+    /**
+     * Library Selection Grid
+     * Radio buttons for choosing p5.js or Phaser 3
+     */
+    .library-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /**
+     * Hide Default Radio Buttons
+     * Custom styled labels replace native radio inputs
+     */
+    .library-option input[type="radio"] {
+      display: none;
+    }
+
+    /**
+     * Library Selection Cards
+     * Custom radio button labels styled as cards
+     */
+    .library-label {
+      display: block;
+      padding: 16px 16px 14px;
+      background: rgba(8, 8, 8, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .library-label:hover {
+      background: rgba(14, 14, 14, 0.98);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /**
+     * Selected Library State
+     * Highlights chosen library with glow effect
+     */
+    .library-option input[type="radio"]:checked+.library-label {
+      background: radial-gradient(circle at top left,
+          rgba(0, 255, 136, 0.18),
+          transparent 70%),
+        rgba(8, 8, 8, 0.98);
+      border-color: #00ff88;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.35);
+    }
+
+    .library-name {
+      font-size: 1.02em;
+      font-weight: 600;
+      margin-bottom: 3px;
+      color: #ffffff;
+    }
+
+    .library-desc {
+      font-size: 0.8em;
+      color: #808080;
+    }
+
+    /* ========== GENERATE BUTTON ========== */
+
+    /**
+     * Primary Action Button
+     * Triggers AI game generation with streaming output
+     */
+    .generate-btn {
+      width: 100%;
+      margin-top: 22px;
+      padding: 15px;
+      background: linear-gradient(135deg, #00ff88, #00dd77);
+      border: none;
+      border-radius: 12px;
+      color: #0a0a0a;
+      font-size: 0.98em;
+      font-weight: 650;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 14px 30px rgba(0, 255, 136, 0.4);
+    }
+
+    .generate-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 40px rgba(0, 255, 136, 0.45);
+      filter: brightness(1.03);
+    }
+
+    .generate-btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 10px 22px rgba(0, 255, 136, 0.35);
+    }
+
+    /**
+     * Disabled Button State
+     * Shows loading state during generation
+     */
+    .generate-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-icon {
+      font-size: 1.1em;
+    }
+
+    /* ========== GENERIC BUTTON STYLES ========== */
+
+    /**
+     * Secondary Button Component
+     * Used for login, logout, and modal actions
+     */
+    .btn {
+      padding: 8px 16px;
+      background: rgba(40, 40, 40, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: rgba(50, 50, 50, 0.9);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    /**
+     * Login Button Variant
+     * Highlighted with brand color
+     */
+    .user-section .btn {
+      background: rgba(0, 255, 136, 0.1);
+      border-color: rgba(0, 255, 136, 0.3);
+      color: #00ff88;
+    }
+
+    .user-section .btn:hover {
+      background: rgba(0, 255, 136, 0.2);
+      border-color: rgba(0, 255, 136, 0.5);
+      box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2);
+    }
+
+    /* ========== LOADING SPINNER ========== */
+
+    /**
+     * Loading Spinner Animation
+     * Displayed during AI generation
+     */
+    .loading-spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(10, 10, 10, 0.2);
+      border-top-color: #0a0a0a;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ========== ERROR MESSAGES ========== */
+
+    /**
+     * Error Message Display
+     * Shows validation and connection errors
+     */
+    .error-message {
+      background: rgba(220, 38, 38, 0.08);
+      border: 1px solid rgba(220, 38, 38, 0.35);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #fecaca;
+      margin-top: 18px;
+      display: none;
+      font-size: 0.9em;
+    }
+
+    /* ========== RESPONSIVE DESIGN ========== */
+
+    /**
+     * Tablet and Below
+     * Switches to single-column layout
+     */
+    @media (max-width: 968px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .info-bar {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .header {
+        flex-direction: column;
+      }
+
+      .user-section {
+        align-self: flex-end;
+      }
+    }
+
+    /**
+     * Mobile Devices
+     * Reduces padding and stacks elements
+     */
+    @media (max-width: 640px) {
+      body {
+        padding: 26px 16px;
+      }
+
+      .logo-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .content-grid {
+        gap: 18px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .library-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        flex-direction: column;
+      }
+
+      .user-section {
+        align-self: flex-start;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Decorative floating background orbs -->
+  <div class="orb orb-left"></div>
+  <div class="orb orb-right"></div>
+
+  <div class="container">
+    <!-- ========== HEADER ========== -->
+    <div class="header">
+      <div class="header-content">
+        <div class="logo-section">
+          <div class="logo">
+            games<span class="logo-highlight"><span class="dot">.</span>random</span>
+          </div>
+          <span class="beta-badge">BETA</span>
+        </div>
+        <div class="tagline">
+          Generate a 2D game and learn the code behind it.
+        </div>
+        <div class="mini-tagline">
+          Describe a game → choose a library → get playable code you can study.
+        </div>
+      </div>
+
+      <!-- User authentication section -->
+      <div class="user-section" id="userSection">
+        <!-- Logged-in user info (hidden by default) -->
+        <div id="userInfo" style="display: none; align-items: center;">
+          <img id="userAvatar"
+            style="width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; border: 2px solid #00ff88;">
+          <span id="userName" style="margin-right: 15px; color: #e0e0e0; font-weight: 500;"></span>
+          <button class="btn" onclick="showMyGames()"
+            style="padding: 6px 12px; font-size: 0.8em; margin-right: 5px; background: rgba(0, 255, 136, 0.1); border-color: rgba(0, 255, 136, 0.3);">My
+            Games</button>
+          <button class="btn" onclick="logout()" style="padding: 6px 12px; font-size: 0.8em;">Logout</button>
+        </div>
+        <!-- Login button (shown when not authenticated) -->
+        <button id="loginButton" class="btn" onclick="login()"
+          style="display: none; padding: 8px 16px; background: rgba(0, 255, 136, 0.1); border-color: rgba(0, 255, 136, 0.3);">
+          <span style="margin-right: 8px;">🔐</span> Sign in with Google
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== INFO BAR ========== -->
+    <div class="info-bar">
+      <div class="info-item">
+        <div class="status-dot"></div>
+        <span class="info-label">Status:</span>
+        <span class="info-value">Online (local server)</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Model:</span>
+        <span class="info-value">Claude (Anthropic)</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Libraries:</span>
+        <span class="info-value">p5.js · Phaser 3</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Shortcut:</span>
+        <span class="info-value">Shift + Enter to generate</span>
+      </div>
+    </div>
+
+    <!-- ========== MAIN CONTENT GRID ========== -->
+    <div class="content-grid">
+      <!-- LEFT CARD: Game Description Input -->
+      <div class="card">
+        <div class="card-title">
+          <span class="step">①</span>Game description
+        </div>
+
+        <textarea id="description"
+          placeholder="Describe a 2D game you want to generate, play, and use to learn how its code works."></textarea>
+
+        <!-- Quick-start learning game button -->
+        <button class="learn-btn" onclick="useLearningGame()">
+          <span class="learn-btn-icon">🎮</span>
+          <span>Start with a basic 2D learning game</span>
+        </button>
+
+        <!-- Example game suggestions -->
+        <div class="examples">
+          <span class="examples-label">Or pick a quick idea</span>
+          <div class="example-grid">
+            <span class="example-chip"
+              onclick="setExample('Create a simple pong game where I can learn how movement and collision work.')">Pong</span>
+            <span class="example-chip"
+              onclick="setExample('Build a snake game that shows how the grid and score system are coded.')">Snake</span>
+            <span class="example-chip"
+              onclick="setExample('Make a flappy bird style game to learn jumping physics and obstacles.')">Flappy
+              Bird</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT CARD: Library Selection -->
+      <div class="card">
+        <div class="card-title">
+          <span class="step">②</span>Choose a library
+        </div>
+
+        <!-- Library selection radio buttons -->
+        <div class="library-grid">
+          <div class="library-option">
+            <input type="radio" name="library" id="p5js" value="p5js" checked />
+            <label for="p5js" class="library-label">
+              <div class="library-name">p5.js</div>
+              <div class="library-desc">
+                Great for simple 2D sketches, arcade games, and visual learning.
+              </div>
+            </label>
+          </div>
+
+          <div class="library-option">
+            <input type="radio" name="library" id="phaser" value="phaser" />
+            <label for="phaser" class="library-label">
+              <div class="library-name">Phaser 3</div>
+              <div class="library-desc">
+                Scene-based engine for more advanced 2D games and levels.
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Generate button -->
+        <button class="generate-btn" onclick="generateGame()">
+          <span id="btn-text">
+            <span class="btn-icon">▶</span>
+            Generate game code
+          </span>
+          <div class="loading-spinner" id="spinner"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Error message display -->
+    <div class="error-message" id="error"></div>
+  </div>
+
+  <script>
+    /**
+     * ========== GAME GENERATION WITH STREAMING ==========
+     * 
+     * Generates game code using AI with real-time streaming output.
+     * Uses Server-Sent Events (SSE) to display code as it's generated.
+     * Automatically saves games for authenticated users.
+     */
+    async function generateGame() {
+      const description = document.getElementById("description").value;
+      const library = document.querySelector('input[name="library"]:checked').value;
+      const btnText = document.getElementById("btn-text");
+      const spinner = document.getElementById("spinner");
+      const generateBtn = document.querySelector(".generate-btn");
+      const errorSection = document.getElementById("error");
+
+      errorSection.style.display = "none";
+
+      // Validate input
+      if (!description.trim()) {
+        showError("Please describe the 2D game you want to create.");
+        return;
+      }
+
+      // Show loading state
+      btnText.style.display = "none";
+      spinner.style.display = "block";
+      generateBtn.disabled = true;
+
+      // Create streaming progress UI
+      const progressContainer = document.createElement('div');
+      progressContainer.id = 'streaming-progress';
+      progressContainer.style.cssText = `
+        margin-top: 24px;
+        padding: 24px;
+        background: rgba(20, 20, 20, 0.9);
+        border: 1px solid rgba(0, 255, 136, 0.2);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+      `;
+      progressContainer.innerHTML = `
+        <div style="color: #00ff88; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
+          <span class="spinner" style="width: 16px; height: 16px; display: inline-block;"></span>
+          ⚡ Generating code in real-time...
+        </div>
+        <div style="
+          background: rgba(15, 15, 15, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 8px;
+          padding: 16px;
+          max-height: 280px;
+          overflow-y: auto;
+          font-family: 'JetBrains Mono', 'Courier New', monospace;
+          font-size: 0.8em;
+          line-height: 1.7;
+          color: #d4d4d4;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        " id="streaming-code"></div>
+        <div style="margin-top: 12px; color: #808080; font-size: 0.85em; font-weight: 500;" id="stream-status">
+          Connecting to AI...
+        </div>
+      `;
+
+      // Remove old progress UI if exists
+      const oldProgress = document.getElementById('streaming-progress');
+      if (oldProgress) oldProgress.remove();
+
+      // Add progress UI to page
+      document.querySelector('.content-grid').after(progressContainer);
+
+      const streamingCodeEl = document.getElementById('streaming-code');
+      const streamStatus = document.getElementById('stream-status');
+
+      try {
+        // Connect to streaming endpoint
+        const response = await fetch("/api/generate-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ description, library }),
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        streamStatus.textContent = '✨ Streaming code...';
+
+        // Read streaming response
+        while (true) {
+          const { value, done } = await reader.read();
+
+          if (done) break;
+
+          // Decode chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE messages
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop(); // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith('data: ')) continue;
+
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'chunk') {
+                // Update displayed code progressively
+                streamingCodeEl.textContent = data.full;
+                streamingCodeEl.scrollTop = streamingCodeEl.scrollHeight;
+                streamStatus.textContent = `📝 Chunk ${data.chunkNumber}...`;
+
+              } else if (data.type === 'complete') {
+                streamStatus.innerHTML = `✅ Complete! Generated in ${data.totalTime}s • ${data.chunks} chunks • ${data.tokens} tokens`;
+
+                // Auto-save for authenticated users
+                (async () => {
+                  try {
+                    const authResponse = await fetch('/auth/current-user');
+                    const authData = await authResponse.json();
+
+                    if (authData.user) {
+                      const title = description.substring(0, 50) + (description.length > 50 ? '...' : '');
+                      console.log('💾 Attempting to auto-save game...');
+
+                      const saveResult = await saveGame(title, description, data.code, library);
+
+                      if (saveResult.success) {
+                        console.log('✅ Game auto-saved successfully!');
+                        streamStatus.innerHTML += ' • 💾 Saved';
+                      } else {
+                        console.error('❌ Failed to auto-save:', saveResult.error);
+                      }
+                    } else {
+                      console.log('ℹ️ Not logged in, skipping auto-save');
+                    }
+                  } catch (error) {
+                    console.error('❌ Auto-save error:', error);
+                  }
+                })();
+
+                // Save to session storage and redirect to play page
+                setTimeout(() => {
+                  sessionStorage.setItem("editedGameCode", data.code);
+                  sessionStorage.setItem("gameLibrary", library);
+                  window.location.href = "play.html";
+                }, 1500);
+
+              } else if (data.type === 'error') {
+                throw new Error(data.error);
+              }
+
+            } catch (parseError) {
+              console.warn('Failed to parse SSE:', line);
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error(error);
+        showError("Connection error. Make sure the server is running.");
+        progressContainer.remove();
+      } finally {
+        // Reset button state
+        btnText.style.display = "inline";
+        spinner.style.display = "none";
+        generateBtn.disabled = false;
+      }
+    }
+
+    /**
+     * Display Error Message
+     * @param {string} message - Error message to display
+     */
+    function showError(message) {
+      const errorSection = document.getElementById("error");
+      errorSection.textContent = "❌ " + message;
+      errorSection.style.display = "block";
+    }
+
+    /**
+     * Fill Textarea with Example
+     * @param {string} text - Example game description
+     */
+    function setExample(text) {
+      const textarea = document.getElementById("description");
+      textarea.value = text;
+      textarea.focus();
+    }
+
+    /**
+     * Fill Textarea with Learning Game Template
+     * Creates a beginner-friendly game with clear comments
+     */
+    function useLearningGame() {
+      const text = `Create a simple 2D learning game that teaches basic game coding concepts.
+The game should:
+- Show a player square that moves with the arrow keys
+- Include one enemy or obstacle
+- Track score when the player collects items
+- Use clear comments so a beginner can understand how it works.`;
+      const textarea = document.getElementById("description");
+      textarea.value = text;
+      textarea.focus();
+    }
+
+    /**
+     * Keyboard Shortcut: Shift+Enter to Generate
+     */
+    document
+      .getElementById("description")
+      .addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          generateGame();
+        }
+      });
+
+    /**
+     * ========== PARALLAX EFFECT FOR BACKGROUND ORBS ==========
+     * Orbs move slightly in response to mouse movement
+     */
+    const orbLeft = document.querySelector('.orb-left');
+    const orbRight = document.querySelector('.orb-right');
+
+    document.addEventListener('mousemove', (e) => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Normalize mouse position to -1...1
+      const x = (e.clientX / w - 0.5) * 2;
+      const y = (e.clientY / h - 0.5) * 2;
+
+      if (orbLeft) {
+        orbLeft.style.transform = `translate(${x * 18}px, ${y * 12}px)`;
+      }
+
+      if (orbRight) {
+        // Opposite direction for depth effect
+        orbRight.style.transform = `translate(${x * -18}px, ${y * -14}px)`;
+      }
+    });
+
+    /**
+     * ========== AUTHENTICATION FUNCTIONS ==========
+     */
+
+    /**
+     * Check Current Authentication Status
+     * Updates UI to show login button or user info
+     */
+    async function checkAuth() {
+      try {
+        const response = await fetch('/auth/current-user');
+        const data = await response.json();
+
+        if (data.user) {
+          showUserInfo(data.user);
+        } else {
+          showLoginButton();
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        showLoginButton();
+      }
+    }
+
+    /**
+     * Display User Information
+     * @param {Object} user - User object with name, avatar, etc.
+     */
+    function showUserInfo(user) {
+      document.getElementById('userInfo').style.display = 'flex';
+      document.getElementById('loginButton').style.display = 'none';
+      document.getElementById('userAvatar').src = user.avatar;
+      document.getElementById('userName').textContent = user.name;
+    }
+
+    /**
+     * Show Login Button
+     * Displayed when user is not authenticated
+     */
+    function showLoginButton() {
+      document.getElementById('userInfo').style.display = 'none';
+      document.getElementById('loginButton').style.display = 'block';
+    }
+
+    /**
+     * Initiate Google OAuth Login
+     */
+    function login() {
+      window.location.href = '/auth/google';
+    }
+
+    /**
+     * Log Out Current User
+     */
+    function logout() {
+      window.location.href = '/auth/logout';
+    }
+
+    /**
+     * ========== GAME SAVING FUNCTIONS ==========
+     */
+
+    /**
+     * Save Game to User's Account
+     * @param {string} title - Game title
+     * @param {string} description - Game description
+     * @param {string} code - Generated game code
+     * @param {string} library - Library used (p5js or phaser)
+     * @returns {Object} Save result with success status
+     */
+    async function saveGame(title, description, code, library) {
+      try {
+        const response = await fetch('/api/save-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, code, library })
+        });
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error saving game:', error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    /**
+     * Display My Games Modal
+     * Shows list of user's saved games
+     */
+    async function showMyGames() {
+      try {
+        const response = await fetch('/api/my-games');
+        const data = await response.json();
+
+        if (data.success) {
+          displayGamesList(data.games);
+          document.getElementById('myGamesModal').style.display = 'flex';
+        }
+      } catch (error) {
+        console.error('Error loading games:', error);
+      }
+    }
+
+    /**
+     * Close My Games Modal
+     */
+    function closeMyGames() {
+      document.getElementById('myGamesModal').style.display = 'none';
+    }
+
+    /**
+     * Render Games List in Modal
+     * @param {Array} games - Array of saved game objects
+     */
+    function displayGamesList(games) {
+      const container = document.getElementById('gamesList');
+
+      if (games.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No saved games yet. Generate a game and save it!</p>';
+        return;
+      }
+
+      container.innerHTML = games.map(game => `
+    <div class="game-item" style="background: rgba(30, 30, 30, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="flex: 1;">
+          <h4 style="margin: 0 0 5px 0; color: #00ff88;">${game.title}</h4>
+          <p style="margin: 0 0 8px 0; color: #aaa; font-size: 0.9em;">${game.description}</p>
+          <div style="display: flex; gap: 10px; font-size: 0.8em; color: #666;">
+            <span>Library: ${game.library}</span>
+            <span>Created: ${new Date(game.createdAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 5px;">
+          <button class="btn" onclick="loadGame('${game.id}')" style="padding: 6px 12px; font-size: 0.8em;">Load</button>
+          <button class="btn" onclick="deleteGame('${game.id}', '${game.title.replace(/'/g, "\\'")}')" style="padding: 6px 12px; font-size: 0.8em; background: rgba(220, 38, 38, 0.1);">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    /**
+     * Load Game from Saved Games
+     * @param {string} gameId - MongoDB ObjectId of game to load
+     */
+    async function loadGame(gameId) {
+      try {
+        const response = await fetch('/api/my-games');
+        const data = await response.json();
+
+        if (data.success) {
+          const game = data.games.find(g => g.id === gameId);
+          if (game) {
+            // Store in session and redirect to play page
+            sessionStorage.setItem('editedGameCode', game.code);
+            sessionStorage.setItem('gameLibrary', game.library);
+            window.location.href = 'play.html';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading game:', error);
+      }
+    }
+
+    // Track game to delete
+    let gameToDelete = null;
+
+    /**
+     * Show Delete Confirmation Modal
+     * @param {string} gameId - Game ID to delete
+     * @param {string} gameTitle - Game title for confirmation message
+     */
+    function deleteGame(gameId, gameTitle) {
+      gameToDelete = gameId;
+      document.getElementById('deleteGameTitle').textContent = gameTitle;
+      document.getElementById('deleteConfirmModal').style.display = 'flex';
+    }
+
+    /**
+     * Close Delete Confirmation Modal
+     */
+    function closeDeleteModal() {
+      document.getElementById('deleteConfirmModal').style.display = 'none';
+      gameToDelete = null;
+    }
+
+    /**
+     * Confirm and Execute Game Deletion
+     */
+    async function confirmDelete() {
+      if (!gameToDelete) return;
+
+      const deleteBtn = document.getElementById('confirmDeleteBtn');
+      deleteBtn.textContent = 'Deleting...';
+      deleteBtn.disabled = true;
+      deleteBtn.style.opacity = '0.6';
+
+      try {
+        const response = await fetch(`/api/games/${gameToDelete}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (data.success) {
+          deleteBtn.textContent = '✓ Deleted!';
+          deleteBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+
+          setTimeout(() => {
+            closeDeleteModal();
+            showMyGames(); // Refresh games list
+          }, 800);
+        }
+      } catch (error) {
+        console.error('Error deleting game:', error);
+        deleteBtn.textContent = '✗ Failed';
+      }
+    }
+
+    /**
+     * ========== INITIALIZE ON PAGE LOAD ==========
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+    });
+
+  </script>
+
+  <!-- ========== MY GAMES MODAL ========== -->
+  <div id="myGamesModal" class="modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
+    <div class="modal-content"
+      style="background: rgba(20, 20, 20, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 0; max-width: 600px; width: 90%; max-height: 80vh; overflow: hidden;">
+      <div class="modal-header"
+        style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; color: #00ff88;">🎮 My Saved Games</h2>
+        <button class="btn" onclick="closeMyGames()"
+          style="background: none; border: none; color: #e0e0e0; font-size: 1.2em; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+        <div id="gamesList">
+          <!-- Games list populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DELETE CONFIRMATION MODAL ========== -->
+  <div id="deleteConfirmModal" class="modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10001; align-items: center; justify-content: center;">
+    <div class="delete-modal-content"
+      style="background: linear-gradient(135deg, rgba(30, 30, 30, 0.98), rgba(20, 20, 20, 0.98)); border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 12px; padding: 0; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(220, 38, 38, 0.3);">
+      <div class="modal-header"
+        style="padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 1.5em;">🗑️</span>
+        <h2 style="margin: 0; color: #ff6b6b; font-size: 1.2em;">Delete Game?</h2>
+      </div>
+      <div class="modal-body" style="padding: 24px;">
+        <p style="color: #d0d0d0; margin: 0 0 8px 0; line-height: 1.6;">
+          Are you sure you want to delete <strong id="deleteGameTitle" style="color: #fff;"></strong>?
+        </p>
+        <p style="color: #999; margin: 0; font-size: 0.9em;">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer"
+        style="padding: 20px 24px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 12px; justify-content: flex-end;">
+        <button onclick="closeDeleteModal()"
+          style="padding: 10px 20px; background: rgba(60, 60, 60, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: #e0e0e0; font-size: 0.95em; cursor: pointer; font-family: inherit; font-weight: 500;">Cancel</button>
+        <button id="confirmDeleteBtn" onclick="confirmDelete()"
+          style="padding: 10px 20px; background: linear-gradient(135deg, #dc2626, #b91c1c); border: none; border-radius: 8px; color: #fff; font-size: 0.95em; cursor: pointer; font-family: inherit; font-weight: 600; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">Delete
+          Game</button>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

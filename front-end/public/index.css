@@ -1,0 +1,429 @@
+/**
+ * games.random - Main Stylesheet
+ * 
+ * Styles for the AI game generator interface.
+ * Features responsive layout, gradient backgrounds, and smooth interactions.
+ * 
+ * @author Shayan Mazahir, Mohammad Samin
+ * @license GPL-3.0-or-later
+ */
+
+/* ========== RESET & BASE STYLES ========== */
+
+/**
+ * CSS Reset
+ * Removes default browser margins, padding, and ensures consistent box-sizing
+ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/**
+ * Body Base Styles
+ * Sets up the main background gradient and typography
+ */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+/**
+ * Main Container
+ * Centers content and provides consistent padding
+ */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ========== HEADER ========== */
+
+/**
+ * Header Section
+ * Semi-transparent white background with shadow for depth
+ */
+header {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+/**
+ * Logo and Branding
+ */
+.logo {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.logo h1 {
+    font-size: 2.5em;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1.1em;
+}
+
+/* ========== MAIN CONTENT ========== */
+
+/**
+ * Main Grid Layout
+ * Single column on mobile, two columns on desktop
+ */
+main {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+}
+
+/* ========== INPUT SECTION ========== */
+
+/**
+ * Input Section Container
+ * White card with rounded corners and shadow
+ */
+.input-section {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.input-section h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+/* ========== TEXT INPUT ========== */
+
+/**
+ * Input Group Container
+ * Provides relative positioning for icons
+ */
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+/**
+ * Game Description Textarea
+ * Main input field for natural language game descriptions
+ */
+#gameDescription {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    resize: vertical;
+    font-family: inherit;
+    transition: border-color 0.3s;
+}
+
+/**
+ * Focus state for textarea
+ * Highlights input with brand color when active
+ */
+#gameDescription:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/**
+ * Input Icon
+ * Decorative icon positioned inside the textarea
+ */
+.input-icon {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    font-size: 20px;
+    opacity: 0.5;
+}
+
+/* ========== QUICK EXAMPLES ========== */
+
+/**
+ * Quick Examples Section
+ * Pre-made game suggestions for user convenience
+ */
+.quick-examples {
+    margin-bottom: 25px;
+}
+
+.quick-examples p {
+    margin-bottom: 10px;
+    color: #666;
+    font-weight: 600;
+}
+
+/**
+ * Example Buttons
+ * Clickable chips that fill the textarea with example descriptions
+ */
+.example-btn {
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    padding: 10px 20px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+/**
+ * Example button hover effect
+ * Transforms to brand-colored pill on hover
+ */
+.example-btn:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* ========== LIBRARY SELECTION ========== */
+
+/**
+ * Library Selection Section
+ * Radio buttons for choosing game library (p5.js or Phaser)
+ */
+.library-selection {
+    margin-bottom: 25px;
+}
+
+.library-selection>p {
+    margin-bottom: 10px;
+    color: #666;
+    font-weight: 600;
+}
+
+/**
+ * Custom Radio Button Labels
+ * Styled as cards for better visual hierarchy
+ */
+.radio-label {
+    display: inline-block;
+    margin-right: 20px;
+    cursor: pointer;
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.radio-label:hover {
+    border-color: #667eea;
+}
+
+.radio-label input[type="radio"] {
+    margin-right: 8px;
+}
+
+/**
+ * Selected radio button styling
+ * Highlights the chosen library with brand color
+ */
+.radio-label input[type="radio"]:checked+span {
+    color: #667eea;
+    font-weight: bold;
+}
+
+/**
+ * Library description text
+ * Small hint text explaining each library
+ */
+.radio-label small {
+    display: block;
+    color: #999;
+    font-size: 12px;
+    margin-top: 3px;
+}
+
+/* ========== GENERATE BUTTON ========== */
+
+/**
+ * Main Generate Button
+ * Primary action button with gradient background
+ */
+.generate-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/**
+ * Button hover effect
+ * Lifts button slightly with shadow for depth
+ */
+.generate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/**
+ * Button active state
+ * Returns to normal position when clicked
+ */
+.generate-btn:active {
+    transform: translateY(0);
+}
+
+/**
+ * Disabled button state
+ * Gray appearance when button is not clickable (during generation)
+ */
+.generate-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========== STATUS MESSAGES ========== */
+
+/**
+ * Status Message Container
+ * Shows loading, success, or error states
+ */
+.status-message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: 600;
+    display: none;
+}
+
+/**
+ * Loading State
+ * Yellow background for "generating" status
+ */
+.status-message.loading {
+    display: block;
+    background: #fff3cd;
+    color: #856404;
+}
+
+/**
+ * Success State
+ * Green background for successful generation
+ */
+.status-message.success {
+    display: block;
+    background: #d4edda;
+    color: #155724;
+}
+
+/**
+ * Error State
+ * Red background for error messages
+ */
+.status-message.error {
+    display: block;
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ========== GAME DISPLAY SECTION ========== */
+
+/**
+ * Game Section Container
+ * White card that holds the generated game canvas
+ */
+.game-section {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    min-height: 600px;
+}
+
+/**
+ * Game Container
+ * Flexbox container for centering canvas or placeholder
+ */
+.game-container {
+    width: 100%;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/**
+ * Placeholder Content
+ * Shown before any game is generated
+ */
+.placeholder {
+    text-align: center;
+    color: #999;
+}
+
+.placeholder h3 {
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+
+/* ========== FOOTER ========== */
+
+/**
+ * Footer Section
+ * Credits and information at bottom of page
+ */
+footer {
+    text-align: center;
+    padding: 30px;
+    color: white;
+    margin-top: 30px;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/**
+ * Tablet and Desktop Layout
+ * Switches to two-column layout for larger screens
+ * Left column (400px): Input controls
+ * Right column (remaining space): Game display
+ */
+@media (min-width: 768px) {
+    main {
+        grid-template-columns: 400px 1fr;
+    }
+}
+
+/* ========== ANIMATIONS ========== */
+
+/**
+ * Typing Dot Animation
+ * Used for loading indicators (if implemented)
+ */
+@keyframes typingDot {
+
+    0%,
+    60%,
+    100% {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(-5px);
+    }
+}

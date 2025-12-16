@@ -1,0 +1,21 @@
+{
+  "name": "games.random",
+  "version": "1.0.0",
+  "description": "Learn coding while making your favourite game",
+  "homepage": "https://github.com/Shayan-Mazahir/games.random#readme",
+  "bugs": {
+    "url": "https://github.com/Shayan-Mazahir/games.random/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shayan-Mazahir/games.random.git"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "Shayan Mazahir, Mohammad Samin, Rayyan Moosani",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node back-end/server/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
